@@ -10,6 +10,9 @@ const page = ref('hub')
 const theme = ref(localStorage.getItem('software_patent_theme') || 'light')
 const message = ref('')
 const error = ref('')
+const toast = ref(null)
+const busy = ref({})
+const fieldErrors = ref({})
 const authMode = ref('login')
 const authForm = ref({ username: '', email: '', password: '' })
 const passwordForm = ref({ old_password: '', new_password: '' })
@@ -154,28 +157,120 @@ function syncHash() {
 function showOk(text) {
   message.value = text
   error.value = ''
+  toast.value = { type: 'success', text }
+  window.clearTimeout(showOk.timer)
+  showOk.timer = window.setTimeout(() => { toast.value = null }, 2600)
 }
 
 function showError(err) {
-  error.value = err.message || String(err)
+  const text = err.message || String(err)
+  error.value = text
   message.value = ''
+  toast.value = { type: 'error', text }
+  window.clearTimeout(showError.timer)
+  showError.timer = window.setTimeout(() => { toast.value = null }, 4200)
+}
+
+function isBusy(key) {
+  return Boolean(busy.value[key])
+}
+
+async function withBusy(key, task) {
+  if (isBusy(key)) return
+  busy.value = { ...busy.value, [key]: true }
+  try {
+    return await task()
+  } finally {
+    busy.value = { ...busy.value, [key]: false }
+  }
+}
+
+function setErrors(errors) {
+  fieldErrors.value = errors
+  const count = Object.keys(errors).length
+  if (count) showError(new Error(`还有 ${count} 项需要修正`))
+  return count === 0
+}
+
+function validateGeneration() {
+  const errors = {}
+  if (generationForm.value.count < 1 || generationForm.value.count > 50) errors.generation_count = '生成数量必须在 1-50 之间'
+  if (generationForm.value.modal_depth < 1 || generationForm.value.modal_depth > 3) errors.generation_depth = '嵌套深度必须为 1-3'
+  const llmFields = [generationForm.value.base_url, generationForm.value.api_key, generationForm.value.model_name].filter(Boolean)
+  if (llmFields.length > 0 && llmFields.length < 3) errors.generation_llm = '真实调用需同时填写 base_url、api_key 和 model_name；全部留空则进入演示模式'
+  if (generationForm.value.base_url && !/^https?:\/\//.test(generationForm.value.base_url)) errors.generation_base_url = 'base_url 需以 http:// 或 https:// 开头'
+  return setErrors(errors)
+}
+
+function validateQuestion() {
+  const errors = {}
+  const answer = questionForm.value.answer.trim()
+  if (!questionForm.value.title.trim()) errors.question_title = '请填写题目标题'
+  if (!questionForm.value.question_text.trim()) errors.question_text = '请填写题干'
+  if (!answer) errors.question_answer = '请填写标准答案'
+  if (questionForm.value.question_type === 'true_false' && !['True', 'False'].includes(answer)) errors.question_answer = 'True/False 题答案只能是 True 或 False'
+  if (questionForm.value.question_type === 'multiple_choice' && !['A', 'B', 'C', 'D'].includes(answer)) errors.question_answer = '多选题答案只能是 A/B/C/D'
+  if (questionForm.value.question_type === 'multiple_choice' && questionForm.value.optionsText.split('\n').filter(Boolean).length < 2) errors.question_options = '多选题至少需要两个选项'
+  return setErrors(errors)
+}
+
+function validateImport() {
+  const errors = {}
+  if (!importForm.value.content.trim()) errors.import_content = '请粘贴 JSON 数组或 CSV 文本'
+  if (importForm.value.format === 'json' && importForm.value.content.trim()) {
+    try {
+      const parsed = JSON.parse(importForm.value.content)
+      if (!Array.isArray(parsed)) errors.import_content = 'JSON 导入内容必须是题目数组'
+    } catch {
+      errors.import_content = 'JSON 格式无效，请检查括号、逗号和引号'
+    }
+  }
+  return setErrors(errors)
+}
+
+function validateDataset() {
+  return setErrors(datasetForm.value.name.trim() ? {} : { dataset_name: '请填写数据集名称' })
+}
+
+function validateTemplate() {
+  const errors = {}
+  if (!templateForm.value.name.trim()) errors.template_name = '请填写模板名称'
+  if (!templateForm.value.template_content.trim()) errors.template_content = '请填写模板内容'
+  if (templateForm.value.template_content && !templateForm.value.template_content.includes('{question}')) errors.template_content = '模板建议包含 {question} 占位符'
+  return setErrors(errors)
+}
+
+function validateEvalTask() {
+  const errors = {}
+  if (!evalForm.value.dataset_id) errors.eval_dataset = '请选择数据集'
+  if (!evalForm.value.task_name.trim()) errors.eval_name = '请填写评测任务名称'
+  evalForm.value.models.forEach((model, index) => {
+    if (!model.model_name.trim()) errors[`eval_model_${index}`] = `第 ${index + 1} 个模型缺少 model_name`
+    const filled = [model.base_url, model.api_key].filter(Boolean).length
+    if (filled === 1) errors[`eval_model_${index}`] = `第 ${index + 1} 个模型真实调用需同时填写 base_url 和 api_key`
+    if (model.base_url && !/^https?:\/\//.test(model.base_url)) errors[`eval_model_${index}`] = `第 ${index + 1} 个模型 base_url 格式无效`
+  })
+  if (!evalForm.value.strategies.length) errors.eval_strategy = '至少选择一个提示策略'
+  return setErrors(errors)
 }
 
 async function signIn() {
-  try {
+  await withBusy('auth', async () => {
     const path = authMode.value === 'login' ? '/auth/login' : '/auth/register'
     const body = authMode.value === 'login'
       ? { username: authForm.value.username, password: authForm.value.password }
       : authForm.value
-    const data = await api(path, { method: 'POST', body: JSON.stringify(body) })
-    setToken(data.token)
-    user.value = data.user
-    goTo(pageFromHash(data.user.role))
-    await loadDashboard()
-    showOk('登录成功')
-  } catch (err) {
-    showError(err)
-  }
+    try {
+      const data = await api(path, { method: 'POST', body: JSON.stringify(body) })
+      setToken(data.token)
+      user.value = data.user
+      goTo(pageFromHash(data.user.role))
+      await loadDashboard()
+      showOk('登录成功')
+    } catch (err) {
+      showError(err)
+    }
+  })
 }
 
 async function logout() {
@@ -199,18 +294,22 @@ async function loadMe() {
 }
 
 async function changePassword() {
-  try {
-    await api('/auth/change-password', { method: 'POST', body: JSON.stringify(passwordForm.value) })
-    passwordForm.value = { old_password: '', new_password: '' }
-    showOk('密码已修改')
-  } catch (err) {
-    showError(err)
-  }
+  await withBusy('password', async () => {
+    try {
+      await api('/auth/change-password', { method: 'POST', body: JSON.stringify(passwordForm.value) })
+      passwordForm.value = { old_password: '', new_password: '' }
+      showOk('密码已修改')
+    } catch (err) {
+      showError(err)
+    }
+  })
 }
 
 async function loadDashboard() {
-  await Promise.all([loadQuestions(), loadDatasets(), loadTemplates(), loadTasks()])
-  if (user.value?.role === 'admin') await loadAdmin()
+  await withBusy('dashboard', async () => {
+    await Promise.all([loadQuestions(), loadDatasets(), loadTemplates(), loadTasks()])
+    if (user.value?.role === 'admin') await loadAdmin()
+  })
 }
 
 async function loadQuestions() {
@@ -228,23 +327,26 @@ function normalizeQuestionForm() {
 }
 
 async function saveQuestion() {
-  try {
-    const payload = normalizeQuestionForm()
-    delete payload.premisesText
-    delete payload.optionsText
-    if (editingQuestionId.value) {
-      await api(`/questions/${editingQuestionId.value}`, { method: 'PUT', body: JSON.stringify(payload) })
-      showOk('题目已更新')
-    } else {
-      await api('/questions', { method: 'POST', body: JSON.stringify(payload) })
-      showOk('题目已创建')
+  if (!validateQuestion()) return
+  await withBusy('questionSave', async () => {
+    try {
+      const payload = normalizeQuestionForm()
+      delete payload.premisesText
+      delete payload.optionsText
+      if (editingQuestionId.value) {
+        await api(`/questions/${editingQuestionId.value}`, { method: 'PUT', body: JSON.stringify(payload) })
+        showOk('题目已更新')
+      } else {
+        await api('/questions', { method: 'POST', body: JSON.stringify(payload) })
+        showOk('题目已创建')
+      }
+      questionForm.value = blankQuestion()
+      editingQuestionId.value = null
+      await loadQuestions()
+    } catch (err) {
+      showError(err)
     }
-    questionForm.value = blankQuestion()
-    editingQuestionId.value = null
-    await loadQuestions()
-  } catch (err) {
-    showError(err)
-  }
+  })
 }
 
 function editQuestion(question) {
@@ -258,44 +360,55 @@ function editQuestion(question) {
 }
 
 async function confirmQuestion(id) {
-  try {
-    await api(`/questions/${id}/confirm`, { method: 'POST' })
-    await loadQuestions()
-    showOk('题目已确认')
-  } catch (err) {
-    showError(err)
-  }
+  await withBusy(`confirm-${id}`, async () => {
+    try {
+      await api(`/questions/${id}/confirm`, { method: 'POST' })
+      await loadQuestions()
+      showOk('题目已确认')
+    } catch (err) {
+      showError(err)
+    }
+  })
 }
 
 async function deleteQuestion(id) {
   if (!window.confirm('确认删除该题目？')) return
-  try {
-    await api(`/questions/${id}`, { method: 'DELETE' })
-    await loadQuestions()
-    showOk('题目已删除')
-  } catch (err) {
-    showError(err)
-  }
+  await withBusy(`delete-question-${id}`, async () => {
+    try {
+      await api(`/questions/${id}`, { method: 'DELETE' })
+      await loadQuestions()
+      showOk('题目已删除')
+    } catch (err) {
+      showError(err)
+    }
+  })
 }
 
 async function generateQuestions() {
-  try {
-    await api('/questions/generate', { method: 'POST', body: JSON.stringify(generationForm.value) })
-    await loadQuestions()
-    showOk('已生成草稿题目，可在题目管理中编辑确认')
-  } catch (err) {
-    showError(err)
-  }
+  if (!validateGeneration()) return
+  await withBusy('generate', async () => {
+    try {
+      await api('/questions/generate', { method: 'POST', body: JSON.stringify(generationForm.value) })
+      await loadQuestions()
+      showOk('已生成草稿题目，可在题目管理中编辑确认')
+    } catch (err) {
+      showError(err)
+    }
+  })
 }
 
 async function importQuestions() {
-  try {
-    const result = await api('/questions/import', { method: 'POST', body: JSON.stringify(importForm.value) })
-    await loadQuestions()
-    showOk(`导入完成：成功${result.created}条，错误${result.errors.length}条`)
-  } catch (err) {
-    showError(err)
-  }
+  if (!validateImport()) return
+  await withBusy('import', async () => {
+    try {
+      const result = await api('/questions/import', { method: 'POST', body: JSON.stringify(importForm.value) })
+      await loadQuestions()
+      showOk(`导入完成：成功${result.created}条，错误${result.errors.length}条`)
+      if (result.errors.length) fieldErrors.value = { import_content: result.errors.join('；') }
+    } catch (err) {
+      showError(err)
+    }
+  })
 }
 
 async function loadDatasets() {
@@ -304,15 +417,18 @@ async function loadDatasets() {
 }
 
 async function createDataset() {
-  try {
-    const data = await api('/datasets', { method: 'POST', body: JSON.stringify(datasetForm.value) })
-    datasetForm.value = { name: '', description: '' }
-    selectedDataset.value = data
-    await loadDatasets()
-    showOk('数据集已创建')
-  } catch (err) {
-    showError(err)
-  }
+  if (!validateDataset()) return
+  await withBusy('datasetCreate', async () => {
+    try {
+      const data = await api('/datasets', { method: 'POST', body: JSON.stringify(datasetForm.value) })
+      datasetForm.value = { name: '', description: '' }
+      selectedDataset.value = data
+      await loadDatasets()
+      showOk('数据集已创建')
+    } catch (err) {
+      showError(err)
+    }
+  })
 }
 
 async function openDataset(id) {
@@ -325,16 +441,18 @@ async function addToDataset(questionId) {
     showError(new Error('请先选择一个数据集'))
     return
   }
-  try {
-    selectedDataset.value = await api(`/datasets/${selectedDataset.value.id}/questions`, {
-      method: 'POST',
-      body: JSON.stringify({ question_id: questionId })
-    })
-    await loadDatasets()
-    showOk('已加入数据集')
-  } catch (err) {
-    showError(err)
-  }
+  await withBusy(`add-dataset-${questionId}`, async () => {
+    try {
+      selectedDataset.value = await api(`/datasets/${selectedDataset.value.id}/questions`, {
+        method: 'POST',
+        body: JSON.stringify({ question_id: questionId })
+      })
+      await loadDatasets()
+      showOk('已加入数据集')
+    } catch (err) {
+      showError(err)
+    }
+  })
 }
 
 async function removeFromDataset(questionId) {
@@ -348,14 +466,16 @@ async function removeFromDataset(questionId) {
 
 async function deleteDataset(id) {
   if (!window.confirm('确认删除该数据集？')) return
-  try {
-    await api(`/datasets/${id}`, { method: 'DELETE' })
-    if (selectedDataset.value?.id === id) selectedDataset.value = null
-    await loadDatasets()
-    showOk('数据集已删除')
-  } catch (err) {
-    showError(err)
-  }
+  await withBusy(`delete-dataset-${id}`, async () => {
+    try {
+      await api(`/datasets/${id}`, { method: 'DELETE' })
+      if (selectedDataset.value?.id === id) selectedDataset.value = null
+      await loadDatasets()
+      showOk('数据集已删除')
+    } catch (err) {
+      showError(err)
+    }
+  })
 }
 
 async function loadTemplates() {
@@ -363,14 +483,17 @@ async function loadTemplates() {
 }
 
 async function createTemplate() {
-  try {
-    await api('/prompt-templates', { method: 'POST', body: JSON.stringify(templateForm.value) })
-    templateForm.value = { name: '', strategy_type: 'zero_shot', template_content: '' }
-    await loadTemplates()
-    showOk('模板已创建')
-  } catch (err) {
-    showError(err)
-  }
+  if (!validateTemplate()) return
+  await withBusy('templateCreate', async () => {
+    try {
+      await api('/prompt-templates', { method: 'POST', body: JSON.stringify(templateForm.value) })
+      templateForm.value = { name: '', strategy_type: 'zero_shot', template_content: '' }
+      await loadTemplates()
+      showOk('模板已创建')
+    } catch (err) {
+      showError(err)
+    }
+  })
 }
 
 async function deleteTemplate(template) {
@@ -397,14 +520,17 @@ function addStrategy() {
 }
 
 async function createEvalTask() {
-  try {
-    const data = await api('/eval-tasks', { method: 'POST', body: JSON.stringify(evalForm.value) })
-    selectedTask.value = data
-    await loadTasks()
-    showOk('评测任务已创建，系统正在后台执行')
-  } catch (err) {
-    showError(err)
-  }
+  if (!validateEvalTask()) return
+  await withBusy('evalCreate', async () => {
+    try {
+      const data = await api('/eval-tasks', { method: 'POST', body: JSON.stringify(evalForm.value) })
+      selectedTask.value = data
+      await loadTasks()
+      showOk('评测任务已创建，系统正在后台执行')
+    } catch (err) {
+      showError(err)
+    }
+  })
 }
 
 async function openTask(id) {
@@ -443,6 +569,44 @@ async function deleteUser(id) {
   }
 }
 
+async function createDemoFlow() {
+  if (isAdminMode.value) return
+  await withBusy('demoFlow', async () => {
+    try {
+      const demoForm = {
+        ...generationForm.value,
+        count: 5,
+        base_url: '',
+        api_key: '',
+        model_name: ''
+      }
+      const drafts = await api('/questions/generate', { method: 'POST', body: JSON.stringify(demoForm) })
+      for (const item of drafts) {
+        await api(`/questions/${item.id}/confirm`, { method: 'POST' })
+      }
+      const dataset = await api('/datasets', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: `演示数据集 ${new Date().toLocaleString('zh-CN')}`,
+          description: '一键演示流程自动创建，用于软著截图和核心流程验收。'
+        })
+      })
+      for (const item of drafts) {
+        await api(`/datasets/${dataset.id}/questions`, {
+          method: 'POST',
+          body: JSON.stringify({ question_id: item.id })
+        })
+      }
+      selectedDataset.value = await api(`/datasets/${dataset.id}`)
+      await loadDashboard()
+      goTo('datasets')
+      showOk('演示数据已创建：题目已确认并加入数据集')
+    } catch (err) {
+      showError(err)
+    }
+  })
+}
+
 function labelOf(list, value) {
   return list.find((item) => item.value === value)?.label || value
 }
@@ -466,6 +630,21 @@ const completedTasks = computed(() => tasks.value.filter((item) => item.status =
 const failedTasks = computed(() => tasks.value.filter((item) => item.status === 'failed').length)
 const confirmedRate = computed(() => percent(confirmedQuestions.value.length, questions.value.length))
 const failedPredictions = computed(() => tasks.value.reduce((sum, task) => sum + (task.failed_count || 0), 0))
+const invalidQuestions = computed(() => questions.value.filter((item) => {
+  const premises = Array.isArray(item.premises) ? item.premises : []
+  const options = Array.isArray(item.options) ? item.options : []
+  return !item.title || !item.question_text || !item.answer || premises.length === 0 || !item.explanation || (item.question_type === 'multiple_choice' && options.length < 2)
+}))
+const riskyTasks = computed(() => tasks.value.filter((task) => {
+  const failed = task.failed_count || 0
+  return ['failed', 'cancelled'].includes(task.status) || failed > 0
+}))
+const userProfiles = computed(() => adminUsers.value.map((item) => ({
+  ...item,
+  questions: questions.value.filter((q) => q.user_id === item.id).length,
+  datasets: datasets.value.filter((dataset) => dataset.user_id === item.id).length,
+  tasks: tasks.value.filter((task) => task.user_id === item.id).length
+})))
 const workflowCards = computed(() => [
   { key: 'generate', step: '01', title: '生成题目', text: '配置模态类型和逻辑系统，生成可编辑草稿。', metric: `${draftQuestions.value.length} 个草稿`, cta: '进入生成台' },
   { key: 'questions', step: '02', title: '确认题库', text: '审核题干、前提、答案和解析，沉淀 confirmed 样本。', metric: `${confirmedQuestions.value.length}/${questions.value.length} 已确认`, cta: '整理题库' },
@@ -488,6 +667,12 @@ onMounted(() => {
 </script>
 
 <template>
+  <div v-if="toast" class="toast" :class="toast.type">
+    <span class="toast-dot"></span>
+    <strong>{{ toast.type === 'success' ? '操作完成' : '需要处理' }}</strong>
+    <p>{{ toast.text }}</p>
+  </div>
+
   <main v-if="!user" class="auth-shell">
     <section class="auth-hero">
       <div class="hero-copy">
@@ -519,7 +704,10 @@ onMounted(() => {
         <input v-model="authForm.username" placeholder="用户名" required />
         <input v-if="authMode === 'register'" v-model="authForm.email" placeholder="邮箱" required />
         <input v-model="authForm.password" placeholder="密码" type="password" required />
-        <button class="primary" type="submit">{{ authMode === 'login' ? '启动系统' : '创建账号' }}</button>
+        <button class="primary" type="submit" :disabled="isBusy('auth')" :class="{ 'is-loading': isBusy('auth') }">
+          <span v-if="isBusy('auth')" class="spinner"></span>
+          {{ isBusy('auth') ? '正在进入...' : (authMode === 'login' ? '启动系统' : '创建账号') }}
+        </button>
       </form>
       <p class="muted">默认管理员：admin / admin123</p>
       <p v-if="error" class="notice error">{{ error }}</p>
@@ -553,7 +741,10 @@ onMounted(() => {
       <form class="password-box" @submit.prevent="changePassword">
         <input v-model="passwordForm.old_password" type="password" placeholder="原密码" />
         <input v-model="passwordForm.new_password" type="password" placeholder="新密码" />
-        <button type="submit">修改密码</button>
+        <button type="submit" :disabled="isBusy('password')">
+          <span v-if="isBusy('password')" class="spinner"></span>
+          {{ isBusy('password') ? '修改中' : '修改密码' }}
+        </button>
       </form>
       <button class="ghost" @click="logout">退出登录</button>
     </aside>
@@ -581,8 +772,8 @@ onMounted(() => {
         </div>
       </header>
 
-      <div v-if="message" class="notice success">{{ message }}</div>
-      <div v-if="error" class="notice error">{{ error }}</div>
+      <div v-if="message && !toast" class="notice success">{{ message }}</div>
+      <div v-if="error && !toast" class="notice error">{{ error }}</div>
 
       <section v-if="page === 'hub'" class="page hub-canvas">
         <div class="hub-hero">
@@ -590,6 +781,13 @@ onMounted(() => {
             <p class="section-tag">Research Flow</p>
             <h2>从一道模态逻辑题，到一份模型评测报告</h2>
             <p>点击流程节点直接进入对应模块。系统会把题目状态、数据集资产和评测结果持续汇总到这里。</p>
+            <div class="hero-actions">
+              <button class="primary" type="button" @click="createDemoFlow" :disabled="isBusy('demoFlow')">
+                <span v-if="isBusy('demoFlow')" class="spinner"></span>
+                {{ isBusy('demoFlow') ? '正在生成演示数据' : '一键准备演示数据' }}
+              </button>
+              <button type="button" @click="goTo('generate')">从参数配置开始</button>
+            </div>
           </div>
           <img :src="logicNetwork" alt="模态逻辑实验流程" />
         </div>
@@ -644,13 +842,16 @@ onMounted(() => {
           <label>模态类型<select v-model="generationForm.modal_type"><option v-for="item in modalTypes" :key="item">{{ item }}</option></select></label>
           <label>逻辑系统<select v-model="generationForm.logic_system"><option v-for="item in logicSystems" :key="item">{{ item }}</option></select></label>
           <label>难度<select v-model="generationForm.difficulty"><option v-for="item in difficulties" :key="item.value" :value="item.value">{{ item.label }}</option></select></label>
-          <label>嵌套深度<input v-model.number="generationForm.modal_depth" type="number" min="1" max="3" /></label>
+          <label>嵌套深度<input v-model.number="generationForm.modal_depth" type="number" min="1" max="3" /><small v-if="fieldErrors.generation_depth" class="field-error">{{ fieldErrors.generation_depth }}</small></label>
           <label>题目格式<select v-model="generationForm.question_type"><option v-for="item in questionTypes" :key="item.value" :value="item.value">{{ item.label }}</option></select></label>
-          <label>生成数量<input v-model.number="generationForm.count" type="number" min="1" max="50" /></label>
-          <label>base_url<input v-model="generationForm.base_url" placeholder="可留空进入演示模式" /></label>
+          <label>生成数量<input v-model.number="generationForm.count" type="number" min="1" max="50" /><small v-if="fieldErrors.generation_count" class="field-error">{{ fieldErrors.generation_count }}</small></label>
+          <label>base_url<input v-model="generationForm.base_url" placeholder="可留空进入演示模式" /><small v-if="fieldErrors.generation_base_url" class="field-error">{{ fieldErrors.generation_base_url }}</small></label>
           <label>model_name<input v-model="generationForm.model_name" placeholder="可留空" /></label>
-          <label class="wide">api_key<input v-model="generationForm.api_key" type="password" placeholder="仅本次请求使用，不入库" /></label>
-          <button class="primary wide" type="submit">生成草稿题目</button>
+          <label class="wide">api_key<input v-model="generationForm.api_key" type="password" placeholder="仅本次请求使用，不入库" /><small v-if="fieldErrors.generation_llm" class="field-error">{{ fieldErrors.generation_llm }}</small></label>
+          <button class="primary wide" type="submit" :disabled="isBusy('generate')">
+            <span v-if="isBusy('generate')" class="spinner"></span>
+            {{ isBusy('generate') ? '生成中...' : '生成草稿题目' }}
+          </button>
         </form>
       </section>
 
@@ -667,8 +868,8 @@ onMounted(() => {
         <form class="editor lab-panel" @submit.prevent="saveQuestion">
           <h3>{{ editingQuestionId ? '编辑题目' : '手动录入题目' }}</h3>
           <div class="grid-form">
-            <label>标题<input v-model="questionForm.title" required /></label>
-            <label>答案<input v-model="questionForm.answer" required /></label>
+            <label>标题<input v-model="questionForm.title" required /><small v-if="fieldErrors.question_title" class="field-error">{{ fieldErrors.question_title }}</small></label>
+            <label>答案<input v-model="questionForm.answer" required /><small v-if="fieldErrors.question_answer" class="field-error">{{ fieldErrors.question_answer }}</small></label>
             <label>题型<select v-model="questionForm.question_type"><option v-for="item in questionTypes" :key="item.value" :value="item.value">{{ item.label }}</option></select></label>
             <label>模态类型<select v-model="questionForm.modal_type"><option v-for="item in modalTypes" :key="item">{{ item }}</option></select></label>
             <label>逻辑系统<select v-model="questionForm.logic_system"><option v-for="item in logicSystems" :key="item">{{ item }}</option></select></label>
@@ -676,20 +877,27 @@ onMounted(() => {
             <label>嵌套深度<input v-model.number="questionForm.modal_depth" type="number" min="1" max="3" /></label>
             <label>状态<select v-model="questionForm.review_status"><option value="draft">草稿</option><option value="confirmed">已确认</option></select></label>
             <label class="wide">前提列表<textarea v-model="questionForm.premisesText" placeholder="每行一个前提"></textarea></label>
-            <label class="wide">题干<textarea v-model="questionForm.question_text" required></textarea></label>
-            <label class="wide">选项<textarea v-model="questionForm.optionsText" placeholder="多选题每行一个选项"></textarea></label>
+            <label class="wide">题干<textarea v-model="questionForm.question_text" required></textarea><small v-if="fieldErrors.question_text" class="field-error">{{ fieldErrors.question_text }}</small></label>
+            <label class="wide">选项<textarea v-model="questionForm.optionsText" placeholder="多选题每行一个选项"></textarea><small v-if="fieldErrors.question_options" class="field-error">{{ fieldErrors.question_options }}</small></label>
             <label class="wide">解析<textarea v-model="questionForm.explanation"></textarea></label>
           </div>
-          <button class="primary" type="submit">{{ editingQuestionId ? '保存修改' : '创建题目' }}</button>
+          <button class="primary" type="submit" :disabled="isBusy('questionSave')">
+            <span v-if="isBusy('questionSave')" class="spinner"></span>
+            {{ isBusy('questionSave') ? '保存中...' : (editingQuestionId ? '保存修改' : '创建题目') }}
+          </button>
           <button type="button" @click="questionForm = blankQuestion(); editingQuestionId = null">清空</button>
         </form>
         <div class="editor lab-panel">
           <h3>批量导入</h3>
           <div class="inline">
             <select v-model="importForm.format"><option value="json">JSON</option><option value="csv">CSV</option></select>
-            <button @click="importQuestions">导入</button>
+            <button @click="importQuestions" :disabled="isBusy('import')">
+              <span v-if="isBusy('import')" class="spinner"></span>
+              {{ isBusy('import') ? '导入中' : '导入' }}
+            </button>
           </div>
           <textarea v-model="importForm.content" placeholder="粘贴JSON数组或CSV文本"></textarea>
+          <small v-if="fieldErrors.import_content" class="field-error">{{ fieldErrors.import_content }}</small>
         </div>
         <div class="table-wrap">
           <table>
@@ -703,22 +911,32 @@ onMounted(() => {
                 <td>{{ item.source }}</td>
                 <td class="actions">
                   <button @click="editQuestion(item)">编辑</button>
-                  <button v-if="item.review_status !== 'confirmed'" @click="confirmQuestion(item.id)">确认</button>
-                  <button v-if="selectedDataset && item.review_status === 'confirmed'" @click="addToDataset(item.id)">加入数据集</button>
-                  <button class="danger" @click="deleteQuestion(item.id)">删除</button>
+                  <button v-if="item.review_status !== 'confirmed'" @click="confirmQuestion(item.id)" :disabled="isBusy(`confirm-${item.id}`)">
+                    <span v-if="isBusy(`confirm-${item.id}`)" class="spinner"></span>确认
+                  </button>
+                  <button v-if="selectedDataset && item.review_status === 'confirmed'" @click="addToDataset(item.id)" :disabled="isBusy(`add-dataset-${item.id}`)">加入数据集</button>
+                  <button class="danger" @click="deleteQuestion(item.id)" :disabled="isBusy(`delete-question-${item.id}`)">删除</button>
                 </td>
               </tr>
             </tbody>
           </table>
+          <div v-if="!questions.length" class="table-empty">
+            <strong>题库还没有样本</strong>
+            <span>可以先生成演示题，或手动录入一条题目。</span>
+            <button type="button" @click="goTo('generate')">进入题目生成</button>
+          </div>
         </div>
       </section>
 
       <section v-if="page === 'datasets'" class="page">
         <header class="page-head"><div><p class="section-tag">Dataset Profile</p><h2>数据集管理</h2></div><button @click="loadDatasets">刷新</button></header>
         <form class="inline command-bar" @submit.prevent="createDataset">
-          <input v-model="datasetForm.name" placeholder="数据集名称" required />
+          <span class="input-wrap"><input v-model="datasetForm.name" placeholder="数据集名称" required /><small v-if="fieldErrors.dataset_name" class="field-error">{{ fieldErrors.dataset_name }}</small></span>
           <input v-model="datasetForm.description" placeholder="描述" />
-          <button class="primary" type="submit">创建数据集</button>
+          <button class="primary" type="submit" :disabled="isBusy('datasetCreate')">
+            <span v-if="isBusy('datasetCreate')" class="spinner"></span>
+            {{ isBusy('datasetCreate') ? '创建中...' : '创建数据集' }}
+          </button>
         </form>
         <div class="split">
           <div class="list-panel">
@@ -731,7 +949,7 @@ onMounted(() => {
               <h3>{{ selectedDataset.name }}</h3>
               <div class="actions">
                 <button @click="download(`/datasets/${selectedDataset.id}/export`, `dataset-${selectedDataset.id}.json`)">导出JSON</button>
-                <button class="danger" @click="deleteDataset(selectedDataset.id)">删除</button>
+                <button class="danger" @click="deleteDataset(selectedDataset.id)" :disabled="isBusy(`delete-dataset-${selectedDataset.id}`)">删除</button>
               </div>
             </div>
             <p class="muted">{{ selectedDataset.description || '无描述' }}</p>
@@ -767,6 +985,7 @@ onMounted(() => {
             <img :src="emptyLab" alt="暂无数据集" />
             <strong>选择或创建一个数据集</strong>
             <span>数据集画像会在这里展示题目分布、格式比例和可导出资产。</span>
+            <button type="button" @click="createDemoFlow" :disabled="isBusy('demoFlow')">一键准备演示数据</button>
           </div>
         </div>
       </section>
@@ -784,12 +1003,12 @@ onMounted(() => {
         </div>
         <form class="editor lab-panel" @submit.prevent="createEvalTask">
           <div class="grid-form">
-            <label>数据集<select v-model.number="evalForm.dataset_id" required><option value="">请选择</option><option v-for="dataset in datasets" :key="dataset.id" :value="dataset.id">{{ dataset.name }}</option></select></label>
-            <label>任务名称<input v-model="evalForm.task_name" required /></label>
+            <label>数据集<select v-model.number="evalForm.dataset_id" required><option value="">请选择</option><option v-for="dataset in datasets" :key="dataset.id" :value="dataset.id">{{ dataset.name }}</option></select><small v-if="fieldErrors.eval_dataset" class="field-error">{{ fieldErrors.eval_dataset }}</small></label>
+            <label>任务名称<input v-model="evalForm.task_name" required /><small v-if="fieldErrors.eval_name" class="field-error">{{ fieldErrors.eval_name }}</small></label>
           </div>
           <h3>模型配置</h3>
           <div v-for="(model, index) in evalForm.models" :key="index" class="grid-form compact">
-            <label>model_name<input v-model="model.model_name" required /></label>
+            <label>model_name<input v-model="model.model_name" required /><small v-if="fieldErrors[`eval_model_${index}`]" class="field-error">{{ fieldErrors[`eval_model_${index}`] }}</small></label>
             <label>base_url<input v-model="model.base_url" placeholder="演示模式可留空" /></label>
             <label>api_key<input v-model="model.api_key" type="password" placeholder="仅运行时使用" /></label>
           </div>
@@ -797,10 +1016,13 @@ onMounted(() => {
           <h3>提示策略</h3>
           <div v-for="(strategy, index) in evalForm.strategies" :key="index" class="grid-form compact">
             <label>策略<select v-model="strategy.strategy_type"><option v-for="item in strategies" :key="item.value" :value="item.value">{{ item.label }}</option></select></label>
-            <label>模板<select v-model.number="strategy.prompt_template_id"><option v-for="template in templatesForStrategy(strategy.strategy_type)" :key="template.id" :value="template.id">{{ template.name }}</option></select></label>
+            <label>模板<select v-model.number="strategy.prompt_template_id"><option v-for="template in templatesForStrategy(strategy.strategy_type)" :key="template.id" :value="template.id">{{ template.name }}</option></select><small v-if="fieldErrors.eval_strategy" class="field-error">{{ fieldErrors.eval_strategy }}</small></label>
           </div>
           <button type="button" @click="addStrategy">添加策略</button>
-          <button class="primary" type="submit">发起评测</button>
+          <button class="primary" type="submit" :disabled="isBusy('evalCreate')">
+            <span v-if="isBusy('evalCreate')" class="spinner"></span>
+            {{ isBusy('evalCreate') ? '任务创建中...' : '发起评测' }}
+          </button>
         </form>
       </section>
 
@@ -853,6 +1075,7 @@ onMounted(() => {
             <img :src="reportMatrix" alt="暂无评测报告" />
             <strong>选择一个历史评测任务</strong>
             <span>模型横向对比、策略对比和单题输出会在这里形成报告矩阵。</span>
+            <button type="button" @click="goTo('evaluate')">去创建评测任务</button>
           </div>
         </div>
       </section>
@@ -861,11 +1084,14 @@ onMounted(() => {
         <header class="page-head"><div><p class="section-tag">Prompt Library</p><h2>模板管理</h2></div><button @click="loadTemplates">刷新</button></header>
         <form class="editor lab-panel" @submit.prevent="createTemplate">
           <div class="grid-form">
-            <label>名称<input v-model="templateForm.name" required /></label>
+            <label>名称<input v-model="templateForm.name" required /><small v-if="fieldErrors.template_name" class="field-error">{{ fieldErrors.template_name }}</small></label>
             <label>策略<select v-model="templateForm.strategy_type"><option v-for="item in strategies" :key="item.value" :value="item.value">{{ item.label }}</option></select></label>
-            <label class="wide">模板内容<textarea v-model="templateForm.template_content" required placeholder="使用 {question} 和 {examples} 占位"></textarea></label>
+            <label class="wide">模板内容<textarea v-model="templateForm.template_content" required placeholder="使用 {question} 和 {examples} 占位"></textarea><small v-if="fieldErrors.template_content" class="field-error">{{ fieldErrors.template_content }}</small></label>
           </div>
-          <button class="primary" type="submit">新建模板</button>
+          <button class="primary" type="submit" :disabled="isBusy('templateCreate')">
+            <span v-if="isBusy('templateCreate')" class="spinner"></span>
+            {{ isBusy('templateCreate') ? '创建中...' : '新建模板' }}
+          </button>
         </form>
         <div class="template-grid">
           <article v-for="template in templates" :key="template.id">
@@ -901,10 +1127,44 @@ onMounted(() => {
           <div><span>数据集</span><strong>{{ adminOverview.datasets }}</strong></div>
           <div><span>评测</span><strong>{{ adminOverview.eval_tasks }}</strong></div>
         </div>
+        <div class="risk-grid">
+          <article class="risk-panel">
+            <span class="risk-level amber">待审核</span>
+            <strong>{{ draftQuestions.length }} 个草稿题</strong>
+            <p>建议优先确认题干、前提、答案和解析完整性，避免未审样本进入数据集。</p>
+            <button type="button" @click="goTo('adminContent')">查看内容</button>
+          </article>
+          <article class="risk-panel">
+            <span class="risk-level red">异常任务</span>
+            <strong>{{ riskyTasks.length }} 个需关注</strong>
+            <p>包含失败、取消或有失败预测的评测任务，可作为管理员运维入口。</p>
+            <button type="button" @click="goTo('adminTasks')">查看任务</button>
+          </article>
+          <article class="risk-panel">
+            <span class="risk-level cyan">结构质量</span>
+            <strong>{{ invalidQuestions.length }} 个待补全</strong>
+            <p>自动检查题目是否缺少题干、答案、前提、解析或选择题选项。</p>
+            <button type="button" @click="goTo('adminContent')">质量巡检</button>
+          </article>
+        </div>
       </section>
 
       <section v-if="page === 'adminUsers'" class="page admin-console">
         <header class="page-head"><div><p class="section-tag">Identity Control</p><h2>用户与权限</h2></div><button @click="loadAdmin">刷新用户</button></header>
+        <div class="profile-grid">
+          <article v-for="item in userProfiles" :key="`profile-${item.id}`" class="profile-card">
+            <div>
+              <strong>{{ item.username }}</strong>
+              <span>{{ item.role }}</span>
+            </div>
+            <p>{{ item.email || '未填写邮箱' }}</p>
+            <div class="profile-metrics">
+              <b>{{ item.questions }}</b><span>题</span>
+              <b>{{ item.datasets }}</b><span>集</span>
+              <b>{{ item.tasks }}</b><span>任务</span>
+            </div>
+          </article>
+        </div>
         <div class="table-wrap">
           <table>
             <thead><tr><th>ID</th><th>用户名</th><th>邮箱</th><th>角色</th><th>创建时间</th><th>操作</th></tr></thead>
@@ -929,6 +1189,18 @@ onMounted(() => {
           <div><span>待确认草稿</span><strong>{{ draftQuestions.length }}</strong></div>
           <div><span>已确认题目</span><strong>{{ confirmedQuestions.length }}</strong></div>
           <div><span>数据集</span><strong>{{ datasets.length }}</strong></div>
+        </div>
+        <div class="risk-grid">
+          <article class="risk-panel">
+            <span class="risk-level amber">审核队列</span>
+            <strong>{{ draftQuestions.length }} 个草稿待确认</strong>
+            <p>草稿题不会进入数据集，管理员可在表格中直接确认或删除异常样本。</p>
+          </article>
+          <article class="risk-panel">
+            <span class="risk-level cyan">质量巡检</span>
+            <strong>{{ invalidQuestions.length }} 个题目缺字段</strong>
+            <p>重点检查前提、题干、答案、解析和选择题选项，保证软著演示数据完整。</p>
+          </article>
         </div>
         <div class="table-wrap">
           <table>
@@ -971,6 +1243,18 @@ onMounted(() => {
           <div><span>运行中</span><strong>{{ runningTasks }}</strong></div>
           <div><span>已完成</span><strong>{{ completedTasks }}</strong></div>
           <div><span>失败任务</span><strong>{{ failedTasks }}</strong></div>
+        </div>
+        <div class="risk-grid">
+          <article class="risk-panel">
+            <span class="risk-level red">异常任务</span>
+            <strong>{{ riskyTasks.length }} 个任务需关注</strong>
+            <p>失败、取消或存在失败预测的任务会进入该队列，便于截图展示运维能力。</p>
+          </article>
+          <article class="risk-panel">
+            <span class="risk-level cyan">预测失败</span>
+            <strong>{{ failedPredictions }} 条失败记录</strong>
+            <p>失败记录来自模型调用或解析阶段，报告页仍会保留原始输出与错误信息。</p>
+          </article>
         </div>
         <div class="table-wrap">
           <table>

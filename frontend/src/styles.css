@@ -519,6 +519,75 @@ pre {
   color: var(--red);
 }
 
+.toast {
+  position: fixed;
+  top: 20px;
+  right: 24px;
+  z-index: 50;
+  width: min(360px, calc(100vw - 32px));
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 10px;
+  align-items: center;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(14px);
+  animation: toastIn 0.22s ease-out;
+}
+
+.toast p {
+  grid-column: 2;
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.toast-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--cyan);
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--cyan) 16%, transparent);
+}
+
+.toast.error .toast-dot {
+  background: var(--red);
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--red) 16%, transparent);
+}
+
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin-right: 8px;
+  vertical-align: -2px;
+  border: 2px solid color-mix(in srgb, currentColor 28%, transparent);
+  border-top-color: currentColor;
+  border-radius: 999px;
+  animation: spin 0.8s linear infinite;
+}
+
+button:disabled {
+  cursor: progress;
+  opacity: 0.66;
+}
+
+.field-error {
+  display: block;
+  margin-top: 6px;
+  color: var(--red);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.input-wrap {
+  display: grid;
+  gap: 4px;
+}
+
 .hub-hero,
 .experiment-hero,
 .command-bar,
@@ -556,6 +625,13 @@ pre {
   color: var(--muted);
   line-height: 1.75;
   max-width: 720px;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
 }
 
 .hub-hero img,
@@ -800,6 +876,20 @@ pre {
   overflow: auto;
 }
 
+.table-empty {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 34px 18px;
+  color: var(--muted);
+  text-align: center;
+  border-top: 1px solid var(--line);
+}
+
+.table-empty strong {
+  color: var(--text);
+}
+
 .table-wrap tbody tr {
   transition: background .18s ease;
 }
@@ -946,6 +1036,10 @@ pre {
   line-height: 1.7;
 }
 
+.empty-state button {
+  margin-top: 12px;
+}
+
 .admin-hero {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 300px;
@@ -989,6 +1083,87 @@ pre {
   font-size: 34px;
 }
 
+.risk-grid,
+.profile-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.risk-panel,
+.profile-card {
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--panel);
+  padding: 16px;
+  box-shadow: var(--shadow);
+}
+
+.risk-panel {
+  display: grid;
+  gap: 10px;
+}
+
+.risk-panel strong {
+  font-size: 22px;
+}
+
+.risk-panel p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.risk-level {
+  width: fit-content;
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 900;
+  background: var(--cyan-soft);
+  color: var(--cyan);
+}
+
+.risk-level.amber {
+  background: color-mix(in srgb, var(--amber) 14%, var(--panel));
+  color: var(--amber);
+}
+
+.risk-level.red {
+  background: color-mix(in srgb, var(--red) 13%, var(--panel));
+  color: var(--red);
+}
+
+.profile-card {
+  display: grid;
+  gap: 10px;
+}
+
+.profile-card > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.profile-card p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.profile-metrics {
+  display: grid;
+  grid-template-columns: auto 1fr auto 1fr auto 1fr;
+  gap: 5px;
+  align-items: baseline;
+  color: var(--muted);
+}
+
+.profile-metrics b {
+  color: var(--cyan);
+  font-size: 22px;
+}
+
 @keyframes riseIn {
   from { opacity: 0; transform: translateY(18px); }
   to { opacity: 1; transform: translateY(0); }
@@ -1014,6 +1189,15 @@ pre {
   to { transform: scaleX(1); transform-origin: left; }
 }
 
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(-8px) scale(.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 @media (max-width: 1180px) {
   .auth-shell,
   .topbar,
@@ -1024,7 +1208,9 @@ pre {
   }
 
   .workflow-map,
-  .admin-grid {
+  .admin-grid,
+  .risk-grid,
+  .profile-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -1067,6 +1253,8 @@ pre {
   .workflow-map,
   .hub-grid,
   .admin-grid,
+  .risk-grid,
+  .profile-grid,
   .image-slot {
     grid-template-columns: 1fr;
   }
