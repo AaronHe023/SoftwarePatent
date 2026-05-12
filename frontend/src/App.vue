@@ -6,7 +6,8 @@ import emptyLab from './assets/empty-lab.svg'
 import reportMatrix from './assets/report-matrix.svg'
 
 const user = ref(null)
-const page = ref('generate')
+const page = ref('hub')
+const theme = ref(localStorage.getItem('software_patent_theme') || 'light')
 const message = ref('')
 const error = ref('')
 const authMode = ref('login')
@@ -31,14 +32,35 @@ const strategies = [
 ]
 
 const moduleMeta = {
+  hub: { code: 'HUB', title: '实验舱首页', subtitle: '从生成、确认、构建、评测到导出，按科研流程推进一次完整实验', accent: 'Workbench Hub' },
   generate: { code: 'GEN', title: '实验生成台', subtitle: '按模态类型、逻辑系统和推理深度编排题目生成实验', accent: '题目生产' },
   questions: { code: 'QBK', title: '题库资产库', subtitle: '沉淀、筛选、确认和复用模态逻辑推理样本', accent: '样本治理' },
   datasets: { code: 'DST', title: '数据集画像', subtitle: '把确认题目组织成可导出的评测数据资产', accent: '数据构建' },
   evaluate: { code: 'RUN', title: '评测任务编排', subtitle: '组合模型与提示策略，形成批量推理评测任务', accent: '实验运行' },
   reports: { code: 'RPT', title: '评测报告矩阵', subtitle: '查看总体准确率、分类指标和模型策略对比', accent: '结果分析' },
   templates: { code: 'TPL', title: '提示词模板库', subtitle: '管理 Zero-shot、CoT、Few-shot 等策略模板', accent: 'Prompt资产' },
-  admin: { code: 'ADM', title: '系统管理舱', subtitle: '管理员查看用户、题目、数据集与评测任务概况', accent: '权限管理' }
+  adminHub: { code: 'ADM', title: '系统管理舱', subtitle: '管理员查看系统健康、用户、内容资产和评测任务风险', accent: 'Admin Console' },
+  adminUsers: { code: 'USR', title: '用户与权限', subtitle: '查看用户清单、角色身份和账号创建情况', accent: 'Identity Control' },
+  adminContent: { code: 'CNT', title: '内容监管', subtitle: '集中查看题目资产、数据集资产与待确认内容', accent: 'Content Review' },
+  adminTasks: { code: 'OPS', title: '任务运维', subtitle: '追踪评测任务状态、失败数量与运行进度', accent: 'Evaluation Ops' }
 }
+
+const pageCatalog = [
+  { key: 'hub', label: '实验舱', code: 'HUB' },
+  { key: 'generate', label: '生成', code: 'GEN' },
+  { key: 'questions', label: '题库', code: 'QBK' },
+  { key: 'datasets', label: '数据集', code: 'DST' },
+  { key: 'evaluate', label: '评测', code: 'RUN' },
+  { key: 'reports', label: '报告', code: 'RPT' },
+  { key: 'templates', label: '模板', code: 'TPL' }
+]
+
+const adminCatalog = [
+  { key: 'adminHub', label: '总览', code: 'ADM' },
+  { key: 'adminUsers', label: '用户', code: 'USR' },
+  { key: 'adminContent', label: '内容', code: 'CNT' },
+  { key: 'adminTasks', label: '任务', code: 'OPS' }
+]
 
 const questions = ref([])
 const datasets = ref([])
@@ -46,6 +68,7 @@ const templates = ref([])
 const tasks = ref([])
 const adminUsers = ref([])
 const adminOverview = ref(null)
+const systemHealth = ref('checking')
 const selectedDataset = ref(null)
 const selectedTask = ref(null)
 const importForm = ref({ format: 'json', content: '' })
@@ -91,18 +114,42 @@ const evalForm = ref({
   strategies: [{ strategy_type: 'zero_shot', prompt_template_id: 1 }]
 })
 
-const navItems = computed(() => {
-  const items = [
-    ['generate', '题目生成'],
-    ['questions', '题目管理'],
-    ['datasets', '数据集管理'],
-    ['evaluate', '评测中心'],
-    ['reports', '历史报告'],
-    ['templates', '模板管理']
-  ]
-  if (user.value?.role === 'admin') items.push(['admin', '管理后台'])
-  return items
-})
+const isAdminMode = computed(() => user.value?.role === 'admin')
+const navItems = computed(() => isAdminMode.value ? adminCatalog : pageCatalog)
+
+function applyTheme() {
+  document.documentElement.dataset.theme = theme.value
+  localStorage.setItem('software_patent_theme', theme.value)
+}
+
+function toggleTheme() {
+  theme.value = theme.value === 'light' ? 'dark' : 'light'
+  applyTheme()
+}
+
+function defaultPageFor(role) {
+  return role === 'admin' ? 'adminHub' : 'hub'
+}
+
+function allowedPages(role) {
+  return role === 'admin' ? adminCatalog.map((item) => item.key) : pageCatalog.map((item) => item.key)
+}
+
+function pageFromHash(role) {
+  const raw = window.location.hash.replace(/^#\/?/, '')
+  return allowedPages(role).includes(raw) ? raw : defaultPageFor(role)
+}
+
+function goTo(target) {
+  if (!user.value || !allowedPages(user.value.role).includes(target)) return
+  page.value = target
+  window.location.hash = target
+}
+
+function syncHash() {
+  if (!user.value) return
+  page.value = pageFromHash(user.value.role)
+}
 
 function showOk(text) {
   message.value = text
@@ -123,6 +170,7 @@ async function signIn() {
     const data = await api(path, { method: 'POST', body: JSON.stringify(body) })
     setToken(data.token)
     user.value = data.user
+    goTo(pageFromHash(data.user.role))
     await loadDashboard()
     showOk('登录成功')
   } catch (err) {
@@ -135,12 +183,15 @@ async function logout() {
   user.value = null
   selectedDataset.value = null
   selectedTask.value = null
+  page.value = 'hub'
+  window.location.hash = ''
 }
 
 async function loadMe() {
   if (!getToken()) return
   try {
     user.value = await api('/auth/me')
+    goTo(pageFromHash(user.value.role))
     await loadDashboard()
   } catch {
     setToken('')
@@ -203,7 +254,7 @@ function editQuestion(question) {
     premisesText: question.premises.join('\n'),
     optionsText: question.options.join('\n')
   }
-  page.value = 'questions'
+  goTo('questions')
 }
 
 async function confirmQuestion(id) {
@@ -266,7 +317,7 @@ async function createDataset() {
 
 async function openDataset(id) {
   selectedDataset.value = await api(`/datasets/${id}`)
-  page.value = 'datasets'
+  goTo('datasets')
 }
 
 async function addToDataset(questionId) {
@@ -358,7 +409,7 @@ async function createEvalTask() {
 
 async function openTask(id) {
   selectedTask.value = await api(`/eval-tasks/${id}`)
-  page.value = 'reports'
+  goTo('reports')
 }
 
 async function cancelTask(id) {
@@ -374,6 +425,12 @@ async function cancelTask(id) {
 async function loadAdmin() {
   adminUsers.value = await api('/admin/users')
   adminOverview.value = await api('/admin/overview')
+  try {
+    await api('/health')
+    systemHealth.value = 'healthy'
+  } catch {
+    systemHealth.value = 'offline'
+  }
 }
 
 async function deleteUser(id) {
@@ -400,13 +457,34 @@ function percent(value, total) {
 }
 
 const confirmedQuestions = computed(() => questions.value.filter((item) => item.review_status === 'confirmed'))
+const draftQuestions = computed(() => questions.value.filter((item) => item.review_status === 'draft'))
+const importedQuestions = computed(() => questions.value.filter((item) => item.source === 'imported'))
 const reportOverall = computed(() => selectedTask.value?.reports?.find((item) => item.group_type === 'overall'))
 const pageInfo = computed(() => moduleMeta[page.value] || moduleMeta.generate)
 const runningTasks = computed(() => tasks.value.filter((item) => ['pending', 'running'].includes(item.status)).length)
 const completedTasks = computed(() => tasks.value.filter((item) => item.status === 'completed').length)
+const failedTasks = computed(() => tasks.value.filter((item) => item.status === 'failed').length)
 const confirmedRate = computed(() => percent(confirmedQuestions.value.length, questions.value.length))
+const failedPredictions = computed(() => tasks.value.reduce((sum, task) => sum + (task.failed_count || 0), 0))
+const workflowCards = computed(() => [
+  { key: 'generate', step: '01', title: '生成题目', text: '配置模态类型和逻辑系统，生成可编辑草稿。', metric: `${draftQuestions.value.length} 个草稿`, cta: '进入生成台' },
+  { key: 'questions', step: '02', title: '确认题库', text: '审核题干、前提、答案和解析，沉淀 confirmed 样本。', metric: `${confirmedQuestions.value.length}/${questions.value.length} 已确认`, cta: '整理题库' },
+  { key: 'datasets', step: '03', title: '构建数据集', text: '从确认题库中组装评测集合，并导出标准 JSON。', metric: `${datasets.value.length} 个数据集`, cta: '查看数据集' },
+  { key: 'evaluate', step: '04', title: '运行评测', text: '组合模型和 Prompt 策略，批量记录模型输出。', metric: `${runningTasks.value} 个运行中`, cta: '编排任务' },
+  { key: 'reports', step: '05', title: '分析报告', text: '查看准确率矩阵、分类表现和单题输出明细。', metric: `${completedTasks.value} 份完成`, cta: '查看报告' }
+])
+const adminCards = computed(() => [
+  { key: 'adminUsers', title: '用户与权限', value: adminUsers.value.length, hint: '注册账号 / 管理身份' },
+  { key: 'adminContent', title: '内容监管', value: questions.value.length, hint: `${draftQuestions.value.length} 个草稿待确认` },
+  { key: 'adminContent', title: '数据集资产', value: datasets.value.length, hint: '全量数据集与题目关联' },
+  { key: 'adminTasks', title: '评测运维', value: tasks.value.length, hint: `${failedTasks.value} 个失败任务` }
+])
 
-onMounted(loadMe)
+onMounted(() => {
+  applyTheme()
+  window.addEventListener('hashchange', syncHash)
+  loadMe()
+})
 </script>
 
 <template>
@@ -448,19 +526,19 @@ onMounted(loadMe)
     </section>
   </main>
 
-  <main v-else class="app-shell">
-    <aside class="module-rail">
+  <main v-else class="shell" :class="{ 'admin-shell': isAdminMode }">
+    <aside class="nav-rail">
       <div class="brand">
         <span class="brand-mark">ML</span>
         <div>
           <strong>ModalLogic Lab</strong>
-          <span>科研评测工作台</span>
+          <span>{{ isAdminMode ? '系统管理舱' : '科研评测工作台' }}</span>
         </div>
       </div>
       <nav>
-        <button v-for="[key, label] in navItems" :key="key" :class="{ active: page === key }" @click="page = key">
-          <span class="nav-code">{{ moduleMeta[key]?.code }}</span>
-          <span>{{ label }}</span>
+        <button v-for="item in navItems" :key="item.key" :class="{ active: page === item.key }" @click="goTo(item.key)">
+          <span class="nav-code">{{ item.code }}</span>
+          <span>{{ item.label }}</span>
         </button>
       </nav>
       <div class="rail-card">
@@ -468,6 +546,10 @@ onMounted(loadMe)
         <strong>{{ user.role === 'admin' ? '管理员' : '研究用户' }}</strong>
         <small>{{ user.username }}</small>
       </div>
+      <button class="theme-toggle" type="button" @click="toggleTheme">
+        <span>{{ theme === 'light' ? '浅色' : '深色' }}</span>
+        <strong>{{ theme === 'light' ? '切换深色' : '切换浅色' }}</strong>
+      </button>
       <form class="password-box" @submit.prevent="changePassword">
         <input v-model="passwordForm.old_password" type="password" placeholder="原密码" />
         <input v-model="passwordForm.new_password" type="password" placeholder="新密码" />
@@ -484,15 +566,62 @@ onMounted(loadMe)
           <span>{{ pageInfo.subtitle }}</span>
         </div>
         <div class="topbar-metrics">
-          <div><span>题库</span><strong>{{ questions.length }}</strong></div>
-          <div><span>确认率</span><strong>{{ confirmedRate }}</strong></div>
-          <div><span>运行中</span><strong>{{ runningTasks }}</strong></div>
-          <div><span>已完成</span><strong>{{ completedTasks }}</strong></div>
+          <template v-if="!isAdminMode">
+            <div><span>题库</span><strong>{{ questions.length }}</strong></div>
+            <div><span>确认率</span><strong>{{ confirmedRate }}</strong></div>
+            <div><span>运行中</span><strong>{{ runningTasks }}</strong></div>
+            <div><span>已完成</span><strong>{{ completedTasks }}</strong></div>
+          </template>
+          <template v-else>
+            <div><span>用户</span><strong>{{ adminUsers.length }}</strong></div>
+            <div><span>题目</span><strong>{{ questions.length }}</strong></div>
+            <div><span>数据集</span><strong>{{ datasets.length }}</strong></div>
+            <div><span>健康</span><strong>{{ systemHealth === 'healthy' ? 'OK' : '检查中' }}</strong></div>
+          </template>
         </div>
       </header>
 
       <div v-if="message" class="notice success">{{ message }}</div>
       <div v-if="error" class="notice error">{{ error }}</div>
+
+      <section v-if="page === 'hub'" class="page hub-canvas">
+        <div class="hub-hero">
+          <div>
+            <p class="section-tag">Research Flow</p>
+            <h2>从一道模态逻辑题，到一份模型评测报告</h2>
+            <p>点击流程节点直接进入对应模块。系统会把题目状态、数据集资产和评测结果持续汇总到这里。</p>
+          </div>
+          <img :src="logicNetwork" alt="模态逻辑实验流程" />
+        </div>
+        <div class="workflow-map">
+          <button v-for="card in workflowCards" :key="card.key" class="module-card" @click="goTo(card.key)">
+            <span class="step">{{ card.step }}</span>
+            <strong>{{ card.title }}</strong>
+            <p>{{ card.text }}</p>
+            <b>{{ card.metric }}</b>
+            <em>{{ card.cta }}</em>
+          </button>
+        </div>
+        <div class="hub-grid">
+          <article class="insight-panel">
+            <p class="section-tag">Asset Snapshot</p>
+            <h3>题库资产状态</h3>
+            <div class="mini-bars">
+              <div><span>已确认</span><i :style="{ width: confirmedRate }"></i><b>{{ confirmedQuestions.length }}</b></div>
+              <div><span>草稿</span><i :style="{ width: percent(draftQuestions.length, questions.length) }"></i><b>{{ draftQuestions.length }}</b></div>
+              <div><span>导入</span><i :style="{ width: percent(importedQuestions.length, questions.length) }"></i><b>{{ importedQuestions.length }}</b></div>
+            </div>
+          </article>
+          <article class="insight-panel image-slot">
+            <img :src="emptyLab" alt="实验资产占位" />
+            <div>
+              <p class="section-tag">Image Slot</p>
+              <h3>这里预留后续截图/插图位</h3>
+              <span>可替换为系统流程图、软著截图或论文展示图。</span>
+            </div>
+          </article>
+        </div>
+      </section>
 
       <section v-if="page === 'generate'" class="page">
         <header class="page-head">
@@ -748,14 +877,34 @@ onMounted(loadMe)
         </div>
       </section>
 
-      <section v-if="page === 'admin'" class="page">
-        <header class="page-head"><div><p class="section-tag">System Control</p><h2>管理后台</h2></div><button @click="loadAdmin">刷新</button></header>
+      <section v-if="page === 'adminHub'" class="page admin-console">
+        <header class="page-head"><div><p class="section-tag">System Control</p><h2>管理舱总览</h2></div><button @click="loadAdmin">刷新管理数据</button></header>
+        <div class="admin-hero">
+          <div>
+            <span class="status-dot" :class="systemHealth"></span>
+            <p class="section-tag">API Health</p>
+            <h2>{{ systemHealth === 'healthy' ? '系统接口运行正常' : '接口状态检查中' }}</h2>
+            <p>管理员视角聚焦监管与运维，不混用普通研究用户的生成、构建、评测流程。</p>
+          </div>
+          <img :src="reportMatrix" alt="管理舱矩阵" />
+        </div>
+        <div class="admin-grid">
+          <button v-for="card in adminCards" :key="card.title" class="module-card admin-card" @click="goTo(card.key)">
+            <strong>{{ card.title }}</strong>
+            <b>{{ card.value }}</b>
+            <span>{{ card.hint }}</span>
+          </button>
+        </div>
         <div v-if="adminOverview" class="metrics">
           <div><span>用户</span><strong>{{ adminOverview.users }}</strong></div>
           <div><span>题目</span><strong>{{ adminOverview.questions }}</strong></div>
           <div><span>数据集</span><strong>{{ adminOverview.datasets }}</strong></div>
           <div><span>评测</span><strong>{{ adminOverview.eval_tasks }}</strong></div>
         </div>
+      </section>
+
+      <section v-if="page === 'adminUsers'" class="page admin-console">
+        <header class="page-head"><div><p class="section-tag">Identity Control</p><h2>用户与权限</h2></div><button @click="loadAdmin">刷新用户</button></header>
         <div class="table-wrap">
           <table>
             <thead><tr><th>ID</th><th>用户名</th><th>邮箱</th><th>角色</th><th>创建时间</th><th>操作</th></tr></thead>
@@ -764,9 +913,77 @@ onMounted(loadMe)
                 <td>{{ item.id }}</td>
                 <td>{{ item.username }}</td>
                 <td>{{ item.email }}</td>
-                <td>{{ item.role }}</td>
+                <td><span class="pill confirmed">{{ item.role }}</span></td>
                 <td>{{ item.created_at }}</td>
                 <td><button v-if="item.id !== user.id" class="danger" @click="deleteUser(item.id)">删除用户</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section v-if="page === 'adminContent'" class="page admin-console">
+        <header class="page-head"><div><p class="section-tag">Content Review</p><h2>内容监管</h2></div><button @click="loadDashboard">刷新内容</button></header>
+        <div class="metrics">
+          <div><span>题目总数</span><strong>{{ questions.length }}</strong></div>
+          <div><span>待确认草稿</span><strong>{{ draftQuestions.length }}</strong></div>
+          <div><span>已确认题目</span><strong>{{ confirmedQuestions.length }}</strong></div>
+          <div><span>数据集</span><strong>{{ datasets.length }}</strong></div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>题目</th><th>归属用户</th><th>分类</th><th>状态</th><th>来源</th><th>操作</th></tr></thead>
+            <tbody>
+              <tr v-for="item in questions" :key="item.id">
+                <td>{{ item.title }}</td>
+                <td>#{{ item.user_id }}</td>
+                <td>{{ item.modal_type }} / {{ item.logic_system }} / {{ labelOf(difficulties, item.difficulty) }}</td>
+                <td><span class="pill" :class="item.review_status">{{ item.review_status === 'confirmed' ? '已确认' : '草稿' }}</span></td>
+                <td>{{ item.source }}</td>
+                <td class="actions">
+                  <button v-if="item.review_status !== 'confirmed'" @click="confirmQuestion(item.id)">确认</button>
+                  <button class="danger" @click="deleteQuestion(item.id)">删除</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>数据集</th><th>归属用户</th><th>题目数</th><th>描述</th><th>操作</th></tr></thead>
+            <tbody>
+              <tr v-for="dataset in datasets" :key="dataset.id">
+                <td>{{ dataset.name }}</td>
+                <td>#{{ dataset.user_id }}</td>
+                <td>{{ dataset.question_count }}</td>
+                <td>{{ dataset.description || '无描述' }}</td>
+                <td><button class="danger" @click="deleteDataset(dataset.id)">删除</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section v-if="page === 'adminTasks'" class="page admin-console">
+        <header class="page-head"><div><p class="section-tag">Evaluation Ops</p><h2>评测任务运维</h2></div><button @click="loadTasks">刷新任务</button></header>
+        <div class="metrics">
+          <div><span>任务总数</span><strong>{{ tasks.length }}</strong></div>
+          <div><span>运行中</span><strong>{{ runningTasks }}</strong></div>
+          <div><span>已完成</span><strong>{{ completedTasks }}</strong></div>
+          <div><span>失败任务</span><strong>{{ failedTasks }}</strong></div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>任务</th><th>用户</th><th>数据集</th><th>状态</th><th>进度</th><th>创建时间</th><th>操作</th></tr></thead>
+            <tbody>
+              <tr v-for="task in tasks" :key="task.id">
+                <td>{{ task.task_name }}</td>
+                <td>#{{ task.user_id }}</td>
+                <td>#{{ task.dataset_id }}</td>
+                <td><span class="pill" :class="{ confirmed: task.status === 'completed' }">{{ task.status }}</span></td>
+                <td>{{ task.finished_questions }}/{{ task.total_questions }}</td>
+                <td>{{ task.created_at }}</td>
+                <td><button v-if="['pending','running'].includes(task.status)" @click="cancelTask(task.id)">取消</button></td>
               </tr>
             </tbody>
           </table>
