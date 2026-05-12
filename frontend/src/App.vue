@@ -1,6 +1,9 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { api, download, getToken, setToken } from './api'
+import logicNetwork from './assets/logic-network.svg'
+import emptyLab from './assets/empty-lab.svg'
+import reportMatrix from './assets/report-matrix.svg'
 
 const user = ref(null)
 const page = ref('generate')
@@ -26,6 +29,16 @@ const strategies = [
   { value: 'cot', label: 'CoT' },
   { value: 'few_shot', label: 'Few-shot' }
 ]
+
+const moduleMeta = {
+  generate: { code: 'GEN', title: '实验生成台', subtitle: '按模态类型、逻辑系统和推理深度编排题目生成实验', accent: '题目生产' },
+  questions: { code: 'QBK', title: '题库资产库', subtitle: '沉淀、筛选、确认和复用模态逻辑推理样本', accent: '样本治理' },
+  datasets: { code: 'DST', title: '数据集画像', subtitle: '把确认题目组织成可导出的评测数据资产', accent: '数据构建' },
+  evaluate: { code: 'RUN', title: '评测任务编排', subtitle: '组合模型与提示策略，形成批量推理评测任务', accent: '实验运行' },
+  reports: { code: 'RPT', title: '评测报告矩阵', subtitle: '查看总体准确率、分类指标和模型策略对比', accent: '结果分析' },
+  templates: { code: 'TPL', title: '提示词模板库', subtitle: '管理 Zero-shot、CoT、Few-shot 等策略模板', accent: 'Prompt资产' },
+  admin: { code: 'ADM', title: '系统管理舱', subtitle: '管理员查看用户、题目、数据集与评测任务概况', accent: '权限管理' }
+}
 
 const questions = ref([])
 const datasets = ref([])
@@ -388,17 +401,38 @@ function percent(value, total) {
 
 const confirmedQuestions = computed(() => questions.value.filter((item) => item.review_status === 'confirmed'))
 const reportOverall = computed(() => selectedTask.value?.reports?.find((item) => item.group_type === 'overall'))
+const pageInfo = computed(() => moduleMeta[page.value] || moduleMeta.generate)
+const runningTasks = computed(() => tasks.value.filter((item) => ['pending', 'running'].includes(item.status)).length)
+const completedTasks = computed(() => tasks.value.filter((item) => item.status === 'completed').length)
+const confirmedRate = computed(() => percent(confirmedQuestions.value.length, questions.value.length))
 
 onMounted(loadMe)
 </script>
 
 <template>
   <main v-if="!user" class="auth-shell">
-    <section class="auth-panel">
-      <div>
-        <p class="eyebrow">Modal Logic Evaluation</p>
-        <h1>模态逻辑推理数据集构建与评测系统</h1>
+    <section class="auth-hero">
+      <div class="hero-copy">
+        <p class="eyebrow">MODAL LOGIC LAB · V1.0</p>
+        <h1>面向大语言模型的模态逻辑推理评测工作台</h1>
+        <p class="hero-text">把题目生成、数据集构建、Prompt 策略和模型评测串成一条可演示、可追踪、可导出的科研流程。</p>
+        <div class="hero-metrics">
+          <div><span>Modal Types</span><strong>4</strong></div>
+          <div><span>Logic Systems</span><strong>K/T/S4/S5</strong></div>
+          <div><span>Report Groups</span><strong>7</strong></div>
+        </div>
+        <div class="signal-strip">
+          <i></i><i></i><i></i><i></i>
+        </div>
       </div>
+      <div class="hero-visual">
+        <img :src="logicNetwork" alt="模态逻辑评测网络" />
+      </div>
+    </section>
+
+    <section class="auth-panel">
+      <div class="panel-kicker">Secure Workspace</div>
+      <h2>{{ authMode === 'login' ? '进入评测工作台' : '创建研究账号' }}</h2>
       <div class="segmented">
         <button :class="{ active: authMode === 'login' }" @click="authMode = 'login'">登录</button>
         <button :class="{ active: authMode === 'register' }" @click="authMode = 'register'">注册</button>
@@ -407,7 +441,7 @@ onMounted(loadMe)
         <input v-model="authForm.username" placeholder="用户名" required />
         <input v-if="authMode === 'register'" v-model="authForm.email" placeholder="邮箱" required />
         <input v-model="authForm.password" placeholder="密码" type="password" required />
-        <button class="primary" type="submit">{{ authMode === 'login' ? '进入系统' : '创建账号' }}</button>
+        <button class="primary" type="submit">{{ authMode === 'login' ? '启动系统' : '创建账号' }}</button>
       </form>
       <p class="muted">默认管理员：admin / admin123</p>
       <p v-if="error" class="notice error">{{ error }}</p>
@@ -415,16 +449,25 @@ onMounted(loadMe)
   </main>
 
   <main v-else class="app-shell">
-    <aside class="sidebar">
+    <aside class="module-rail">
       <div class="brand">
-        <strong>模态逻辑评测系统</strong>
-        <span>{{ user.username }} · {{ user.role === 'admin' ? '管理员' : '普通用户' }}</span>
+        <span class="brand-mark">ML</span>
+        <div>
+          <strong>ModalLogic Lab</strong>
+          <span>科研评测工作台</span>
+        </div>
       </div>
       <nav>
         <button v-for="[key, label] in navItems" :key="key" :class="{ active: page === key }" @click="page = key">
-          {{ label }}
+          <span class="nav-code">{{ moduleMeta[key]?.code }}</span>
+          <span>{{ label }}</span>
         </button>
       </nav>
+      <div class="rail-card">
+        <span>当前身份</span>
+        <strong>{{ user.role === 'admin' ? '管理员' : '研究用户' }}</strong>
+        <small>{{ user.username }}</small>
+      </div>
       <form class="password-box" @submit.prevent="changePassword">
         <input v-model="passwordForm.old_password" type="password" placeholder="原密码" />
         <input v-model="passwordForm.new_password" type="password" placeholder="新密码" />
@@ -434,15 +477,41 @@ onMounted(loadMe)
     </aside>
 
     <section class="workspace">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">{{ pageInfo.accent }}</p>
+          <h1>{{ pageInfo.title }}</h1>
+          <span>{{ pageInfo.subtitle }}</span>
+        </div>
+        <div class="topbar-metrics">
+          <div><span>题库</span><strong>{{ questions.length }}</strong></div>
+          <div><span>确认率</span><strong>{{ confirmedRate }}</strong></div>
+          <div><span>运行中</span><strong>{{ runningTasks }}</strong></div>
+          <div><span>已完成</span><strong>{{ completedTasks }}</strong></div>
+        </div>
+      </header>
+
       <div v-if="message" class="notice success">{{ message }}</div>
       <div v-if="error" class="notice error">{{ error }}</div>
 
       <section v-if="page === 'generate'" class="page">
         <header class="page-head">
-          <h2>题目生成</h2>
+          <div>
+            <p class="section-tag">Experiment Composer</p>
+            <h2>题目生成</h2>
+          </div>
           <button @click="loadQuestions">刷新题库</button>
         </header>
-        <form class="grid-form" @submit.prevent="generateQuestions">
+        <div class="experiment-hero">
+          <div>
+            <span>Pipeline</span>
+            <strong>参数设定 → LLM 草稿 → 人工确认 → 题库沉淀</strong>
+          </div>
+          <div class="pipeline">
+            <i class="active">01</i><i>02</i><i>03</i><i>04</i>
+          </div>
+        </div>
+        <form class="grid-form lab-panel" @submit.prevent="generateQuestions">
           <label>模态类型<select v-model="generationForm.modal_type"><option v-for="item in modalTypes" :key="item">{{ item }}</option></select></label>
           <label>逻辑系统<select v-model="generationForm.logic_system"><option v-for="item in logicSystems" :key="item">{{ item }}</option></select></label>
           <label>难度<select v-model="generationForm.difficulty"><option v-for="item in difficulties" :key="item.value" :value="item.value">{{ item.label }}</option></select></label>
@@ -457,8 +526,8 @@ onMounted(loadMe)
       </section>
 
       <section v-if="page === 'questions'" class="page">
-        <header class="page-head"><h2>题目管理</h2><button @click="loadQuestions">刷新</button></header>
-        <div class="filters">
+        <header class="page-head"><div><p class="section-tag">Question Asset Bank</p><h2>题目管理</h2></div><button @click="loadQuestions">刷新</button></header>
+        <div class="filters command-bar">
           <select v-model="filters.modal_type"><option value="">全部模态</option><option v-for="item in modalTypes" :key="item">{{ item }}</option></select>
           <select v-model="filters.logic_system"><option value="">全部系统</option><option v-for="item in logicSystems" :key="item">{{ item }}</option></select>
           <select v-model="filters.difficulty"><option value="">全部难度</option><option v-for="item in difficulties" :key="item.value" :value="item.value">{{ item.label }}</option></select>
@@ -466,7 +535,7 @@ onMounted(loadMe)
           <select v-model="filters.source"><option value="">全部来源</option><option value="manual">手动</option><option value="llm_generated">LLM生成</option><option value="imported">导入</option></select>
           <button @click="loadQuestions">筛选</button>
         </div>
-        <form class="editor" @submit.prevent="saveQuestion">
+        <form class="editor lab-panel" @submit.prevent="saveQuestion">
           <h3>{{ editingQuestionId ? '编辑题目' : '手动录入题目' }}</h3>
           <div class="grid-form">
             <label>标题<input v-model="questionForm.title" required /></label>
@@ -485,7 +554,7 @@ onMounted(loadMe)
           <button class="primary" type="submit">{{ editingQuestionId ? '保存修改' : '创建题目' }}</button>
           <button type="button" @click="questionForm = blankQuestion(); editingQuestionId = null">清空</button>
         </form>
-        <div class="editor">
+        <div class="editor lab-panel">
           <h3>批量导入</h3>
           <div class="inline">
             <select v-model="importForm.format"><option value="json">JSON</option><option value="csv">CSV</option></select>
@@ -516,8 +585,8 @@ onMounted(loadMe)
       </section>
 
       <section v-if="page === 'datasets'" class="page">
-        <header class="page-head"><h2>数据集管理</h2><button @click="loadDatasets">刷新</button></header>
-        <form class="inline" @submit.prevent="createDataset">
+        <header class="page-head"><div><p class="section-tag">Dataset Profile</p><h2>数据集管理</h2></div><button @click="loadDatasets">刷新</button></header>
+        <form class="inline command-bar" @submit.prevent="createDataset">
           <input v-model="datasetForm.name" placeholder="数据集名称" required />
           <input v-model="datasetForm.description" placeholder="描述" />
           <button class="primary" type="submit">创建数据集</button>
@@ -528,7 +597,7 @@ onMounted(loadMe)
               <strong>{{ dataset.name }}</strong><span>{{ dataset.question_count }}题</span>
             </button>
           </div>
-          <div v-if="selectedDataset" class="detail-panel">
+          <div v-if="selectedDataset" class="detail-panel dataset-profile">
             <div class="page-head">
               <h3>{{ selectedDataset.name }}</h3>
               <div class="actions">
@@ -565,12 +634,26 @@ onMounted(loadMe)
               </table>
             </div>
           </div>
+          <div v-else class="empty-state">
+            <img :src="emptyLab" alt="暂无数据集" />
+            <strong>选择或创建一个数据集</strong>
+            <span>数据集画像会在这里展示题目分布、格式比例和可导出资产。</span>
+          </div>
         </div>
       </section>
 
       <section v-if="page === 'evaluate'" class="page">
-        <header class="page-head"><h2>评测中心</h2><button @click="loadTasks">刷新任务</button></header>
-        <form class="editor" @submit.prevent="createEvalTask">
+        <header class="page-head"><div><p class="section-tag">Evaluation Orchestration</p><h2>评测中心</h2></div><button @click="loadTasks">刷新任务</button></header>
+        <div class="experiment-hero amber">
+          <div>
+            <span>Runbook</span>
+            <strong>数据集 → 模型组 → Prompt 策略 → 批量评测报告</strong>
+          </div>
+          <div class="pipeline">
+            <i class="active">DATA</i><i>MODEL</i><i>PROMPT</i><i>REPORT</i>
+          </div>
+        </div>
+        <form class="editor lab-panel" @submit.prevent="createEvalTask">
           <div class="grid-form">
             <label>数据集<select v-model.number="evalForm.dataset_id" required><option value="">请选择</option><option v-for="dataset in datasets" :key="dataset.id" :value="dataset.id">{{ dataset.name }}</option></select></label>
             <label>任务名称<input v-model="evalForm.task_name" required /></label>
@@ -593,14 +676,14 @@ onMounted(loadMe)
       </section>
 
       <section v-if="page === 'reports'" class="page">
-        <header class="page-head"><h2>历史报告</h2><button @click="loadTasks">刷新</button></header>
+        <header class="page-head"><div><p class="section-tag">Result Matrix</p><h2>历史报告</h2></div><button @click="loadTasks">刷新</button></header>
         <div class="split">
           <div class="list-panel">
             <button v-for="task in tasks" :key="task.id" class="list-item" :class="{ active: selectedTask?.id === task.id }" @click="openTask(task.id)">
               <strong>{{ task.task_name }}</strong><span>{{ task.status }} · {{ task.finished_questions }}/{{ task.total_questions }}</span>
             </button>
           </div>
-          <div v-if="selectedTask" class="detail-panel">
+          <div v-if="selectedTask" class="detail-panel report-dashboard">
             <div class="page-head">
               <h3>{{ selectedTask.task_name }}</h3>
               <div class="actions">
@@ -637,12 +720,17 @@ onMounted(loadMe)
               </table>
             </div>
           </div>
+          <div v-else class="empty-state report-empty">
+            <img :src="reportMatrix" alt="暂无评测报告" />
+            <strong>选择一个历史评测任务</strong>
+            <span>模型横向对比、策略对比和单题输出会在这里形成报告矩阵。</span>
+          </div>
         </div>
       </section>
 
       <section v-if="page === 'templates'" class="page">
-        <header class="page-head"><h2>模板管理</h2><button @click="loadTemplates">刷新</button></header>
-        <form class="editor" @submit.prevent="createTemplate">
+        <header class="page-head"><div><p class="section-tag">Prompt Library</p><h2>模板管理</h2></div><button @click="loadTemplates">刷新</button></header>
+        <form class="editor lab-panel" @submit.prevent="createTemplate">
           <div class="grid-form">
             <label>名称<input v-model="templateForm.name" required /></label>
             <label>策略<select v-model="templateForm.strategy_type"><option v-for="item in strategies" :key="item.value" :value="item.value">{{ item.label }}</option></select></label>
@@ -661,7 +749,7 @@ onMounted(loadMe)
       </section>
 
       <section v-if="page === 'admin'" class="page">
-        <header class="page-head"><h2>管理后台</h2><button @click="loadAdmin">刷新</button></header>
+        <header class="page-head"><div><p class="section-tag">System Control</p><h2>管理后台</h2></div><button @click="loadAdmin">刷新</button></header>
         <div v-if="adminOverview" class="metrics">
           <div><span>用户</span><strong>{{ adminOverview.users }}</strong></div>
           <div><span>题目</span><strong>{{ adminOverview.questions }}</strong></div>

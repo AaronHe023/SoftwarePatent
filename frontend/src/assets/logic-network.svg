@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 760" role="img" aria-label="模态逻辑评测网络">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#07111f"/>
+      <stop offset="0.48" stop-color="#10243a"/>
+      <stop offset="1" stop-color="#171323"/>
+    </linearGradient>
+    <radialGradient id="glowA" cx="35%" cy="28%" r="45%">
+      <stop offset="0" stop-color="#29d3b2" stop-opacity=".55"/>
+      <stop offset=".55" stop-color="#29d3b2" stop-opacity=".08"/>
+      <stop offset="1" stop-color="#29d3b2" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowB" cx="78%" cy="62%" r="42%">
+      <stop offset="0" stop-color="#8b5cf6" stop-opacity=".42"/>
+      <stop offset=".55" stop-color="#8b5cf6" stop-opacity=".07"/>
+      <stop offset="1" stop-color="#8b5cf6" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="soft">
+      <feGaussianBlur stdDeviation="7"/>
+    </filter>
+  </defs>
+  <rect width="1200" height="760" fill="url(#bg)"/>
+  <rect width="1200" height="760" fill="url(#glowA)"/>
+  <rect width="1200" height="760" fill="url(#glowB)"/>
+  <g opacity=".16" stroke="#ffffff" stroke-width="1">
+    <path d="M0 96h1200M0 192h1200M0 288h1200M0 384h1200M0 480h1200M0 576h1200M0 672h1200"/>
+    <path d="M96 0v760M192 0v760M288 0v760M384 0v760M480 0v760M576 0v760M672 0v760M768 0v760M864 0v760M960 0v760M1056 0v760"/>
+  </g>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M169 526C260 370 358 336 487 405c107 57 196 46 270-39 65-74 139-96 257-51" stroke="#32d8b5" stroke-width="3" opacity=".8"/>
+    <path d="M195 276c98-72 206-79 325-22 91 44 171 37 240-20 65-54 149-70 252-47" stroke="#8b5cf6" stroke-width="3" opacity=".65"/>
+    <path d="M252 610c87-112 190-153 308-124 117 29 219-7 306-108 50-58 109-94 177-109" stroke="#f6b94b" stroke-width="2.6" opacity=".7"/>
+  </g>
+  <g font-family="Consolas, monospace" font-weight="700">
+    <g opacity=".95">
+      <circle cx="170" cy="526" r="13" fill="#32d8b5"/>
+      <circle cx="487" cy="405" r="18" fill="#f6b94b"/>
+      <circle cx="757" cy="366" r="15" fill="#8b5cf6"/>
+      <circle cx="1014" cy="315" r="20" fill="#32d8b5"/>
+      <circle cx="195" cy="276" r="17" fill="#8b5cf6"/>
+      <circle cx="520" cy="254" r="14" fill="#32d8b5"/>
+      <circle cx="760" cy="234" r="18" fill="#f6b94b"/>
+      <circle cx="1012" cy="187" r="12" fill="#8b5cf6"/>
+      <circle cx="252" cy="610" r="14" fill="#f6b94b"/>
+      <circle cx="560" cy="486" r="16" fill="#32d8b5"/>
+      <circle cx="866" cy="378" r="13" fill="#8b5cf6"/>
+    </g>
+    <g fill="#e8fbff" font-size="26">
+      <text x="430" y="394">□P → P</text>
+      <text x="705" y="218">S5</text>
+      <text x="930" y="303">◇Q</text>
+      <text x="274" y="257">K/T</text>
+      <text x="599" y="514">CoT</text>
+    </g>
+  </g>
+  <g opacity=".72">
+    <rect x="760" y="502" width="275" height="118" rx="18" fill="#07111f" stroke="#38e8c6" stroke-opacity=".45"/>
+    <path d="M793 556h202M793 584h146M793 528h80" stroke="#d9fff8" stroke-width="6" stroke-linecap="round"/>
+    <circle cx="981" cy="529" r="16" fill="#32d8b5"/>
+    <circle cx="1018" cy="529" r="16" fill="#f6b94b"/>
+  </g>
+  <g filter="url(#soft)" opacity=".35">
+    <circle cx="487" cy="405" r="52" fill="#f6b94b"/>
+    <circle cx="1014" cy="315" r="62" fill="#32d8b5"/>
+    <circle cx="760" cy="234" r="48" fill="#8b5cf6"/>
+  </g>
+</svg>
+

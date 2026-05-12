@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 460" role="img" aria-label="评测报告矩阵">
+  <defs>
+    <linearGradient id="m" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1628"/>
+      <stop offset="1" stop-color="#172033"/>
+    </linearGradient>
+  </defs>
+  <rect width="760" height="460" rx="30" fill="url(#m)"/>
+  <g transform="translate(90 76)">
+    <rect width="580" height="300" rx="22" fill="#0f1b2d" stroke="#334155"/>
+    <g stroke="#1e3654" stroke-width="2">
+      <path d="M0 60h580M0 120h580M0 180h580M0 240h580"/>
+      <path d="M116 0v300M232 0v300M348 0v300M464 0v300"/>
+    </g>
+    <g>
+      <rect x="20" y="18" width="76" height="34" rx="9" fill="#2dd4bf"/>
+      <rect x="136" y="76" width="76" height="34" rx="9" fill="#8b5cf6"/>
+      <rect x="252" y="136" width="76" height="34" rx="9" fill="#f59e0b"/>
+      <rect x="368" y="196" width="76" height="34" rx="9" fill="#2dd4bf"/>
+      <rect x="484" y="256" width="76" height="34" rx="9" fill="#8b5cf6"/>
+      <circle cx="174" cy="35" r="13" fill="#f59e0b"/>
+      <circle cx="290" cy="95" r="13" fill="#2dd4bf"/>
+      <circle cx="406" cy="155" r="13" fill="#8b5cf6"/>
+      <circle cx="522" cy="215" r="13" fill="#f59e0b"/>
+    </g>
+  </g>
+  <g fill="#e2e8f0" font-family="Consolas, monospace" font-size="24" font-weight="700">
+    <text x="94" y="48">Accuracy Matrix</text>
+    <text x="552" y="416">0.92</text>
+  </g>
+</svg>

@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 420" role="img" aria-label="空状态实验台">
+  <defs>
+    <linearGradient id="panel" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#132238"/>
+      <stop offset="1" stop-color="#1d263b"/>
+    </linearGradient>
+  </defs>
+  <rect width="640" height="420" rx="28" fill="#08111f"/>
+  <rect x="64" y="70" width="512" height="280" rx="24" fill="url(#panel)" stroke="#2dd4bf" stroke-opacity=".35"/>
+  <path d="M112 260h416" stroke="#334155" stroke-width="3"/>
+  <g fill="none" stroke-linecap="round" stroke-width="8">
+    <path d="M142 235c36-80 74-105 118-74 35 25 69 18 103-20 47-52 90-48 130 12" stroke="#2dd4bf"/>
+    <path d="M148 302h100M282 302h72M389 302h98" stroke="#f59e0b"/>
+    <path d="M172 122h108M172 155h72" stroke="#cbd5e1"/>
+  </g>
+  <circle cx="142" cy="235" r="13" fill="#2dd4bf"/>
+  <circle cx="260" cy="161" r="15" fill="#f59e0b"/>
+  <circle cx="363" cy="141" r="13" fill="#8b5cf6"/>
+  <circle cx="493" cy="153" r="16" fill="#2dd4bf"/>
+  <g fill="#e2e8f0" font-family="Microsoft YaHei, Arial" font-size="22" font-weight="700">
+    <text x="172" y="352">等待新的实验样本</text>
+  </g>
+</svg>
+
