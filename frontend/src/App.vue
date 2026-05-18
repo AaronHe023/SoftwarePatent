@@ -2,8 +2,8 @@
 import { computed, onMounted, ref } from 'vue'
 import { api, download, getToken, setToken } from './api'
 import logicNetwork from './assets/logic-network.svg'
-import emptyLab from './assets/empty-lab.svg'
-import reportMatrix from './assets/report-matrix.svg'
+import emptyState from './assets/empty-lab.svg'
+import reportGraphic from './assets/report-matrix.svg'
 
 const user = ref(null)
 const page = ref('hub')
@@ -35,34 +35,34 @@ const strategies = [
 ]
 
 const moduleMeta = {
-  hub: { code: 'HUB', title: '实验舱首页', subtitle: '从生成、确认、构建、评测到导出，按科研流程推进一次完整实验', accent: 'Workbench Hub' },
-  generate: { code: 'GEN', title: '实验生成台', subtitle: '按模态类型、逻辑系统和推理深度编排题目生成实验', accent: '题目生产' },
-  questions: { code: 'QBK', title: '题库资产库', subtitle: '沉淀、筛选、确认和复用模态逻辑推理样本', accent: '样本治理' },
-  datasets: { code: 'DST', title: '数据集画像', subtitle: '把确认题目组织成可导出的评测数据资产', accent: '数据构建' },
-  evaluate: { code: 'RUN', title: '评测任务编排', subtitle: '组合模型与提示策略，形成批量推理评测任务', accent: '实验运行' },
-  reports: { code: 'RPT', title: '评测报告矩阵', subtitle: '查看总体准确率、分类指标和模型策略对比', accent: '结果分析' },
-  templates: { code: 'TPL', title: '提示词模板库', subtitle: '管理 Zero-shot、CoT、Few-shot 等策略模板', accent: 'Prompt资产' },
-  adminHub: { code: 'ADM', title: '系统管理舱', subtitle: '管理员查看系统健康、用户、内容资产和评测任务风险', accent: 'Admin Console' },
-  adminUsers: { code: 'USR', title: '用户与权限', subtitle: '查看用户清单、角色身份和账号创建情况', accent: 'Identity Control' },
-  adminContent: { code: 'CNT', title: '内容监管', subtitle: '集中查看题目资产、数据集资产与待确认内容', accent: 'Content Review' },
-  adminTasks: { code: 'OPS', title: '任务运维', subtitle: '追踪评测任务状态、失败数量与运行进度', accent: 'Evaluation Ops' }
+  hub: { code: 'HOME', title: '系统首页', subtitle: '按题目生成、题目确认、数据集构建、模型评测和报告导出完成核心流程', accent: '系统总览' },
+  generate: { code: 'GEN', title: '题目生成', subtitle: '按模态类型、逻辑系统、难度和题目格式生成推理题目草稿', accent: '题目生成' },
+  questions: { code: 'QBK', title: '题库管理', subtitle: '维护题干、前提、答案、解析和确认状态，形成可复用题库', accent: '题库管理' },
+  datasets: { code: 'DST', title: '数据集管理', subtitle: '将已确认题目组织为标准评测数据集，并支持 JSON 导出', accent: '数据集管理' },
+  evaluate: { code: 'EVA', title: '模型评测', subtitle: '配置模型和提示策略，对数据集执行批量推理评测', accent: '模型评测' },
+  reports: { code: 'REP', title: '统计报告', subtitle: '查看总体准确率、分类统计、模型策略对比和单题输出', accent: '统计报告' },
+  templates: { code: 'TPL', title: '提示模板', subtitle: '管理 Zero-shot、CoT、Few-shot 等评测提示模板', accent: '提示模板' },
+  adminHub: { code: 'ADM', title: '系统管理后台', subtitle: '管理员查看系统概览、用户、内容审核和评测任务监管', accent: '系统管理' },
+  adminUsers: { code: 'USR', title: '用户管理', subtitle: '查看用户清单、角色身份和账号创建情况', accent: '用户管理' },
+  adminContent: { code: 'CNT', title: '内容审核', subtitle: '集中查看题目、数据集和待确认内容', accent: '内容审核' },
+  adminTasks: { code: 'OPS', title: '评测任务监管', subtitle: '追踪评测任务状态、失败数量与运行进度', accent: '任务监管' }
 }
 
 const pageCatalog = [
-  { key: 'hub', label: '实验舱', code: 'HUB' },
-  { key: 'generate', label: '生成', code: 'GEN' },
-  { key: 'questions', label: '题库', code: 'QBK' },
-  { key: 'datasets', label: '数据集', code: 'DST' },
-  { key: 'evaluate', label: '评测', code: 'RUN' },
-  { key: 'reports', label: '报告', code: 'RPT' },
-  { key: 'templates', label: '模板', code: 'TPL' }
+  { key: 'hub', label: '系统首页', code: 'HOME' },
+  { key: 'generate', label: '题目生成', code: 'GEN' },
+  { key: 'questions', label: '题库管理', code: 'QBK' },
+  { key: 'datasets', label: '数据集管理', code: 'DST' },
+  { key: 'evaluate', label: '模型评测', code: 'EVA' },
+  { key: 'reports', label: '统计报告', code: 'REP' },
+  { key: 'templates', label: '提示模板', code: 'TPL' }
 ]
 
 const adminCatalog = [
-  { key: 'adminHub', label: '总览', code: 'ADM' },
-  { key: 'adminUsers', label: '用户', code: 'USR' },
-  { key: 'adminContent', label: '内容', code: 'CNT' },
-  { key: 'adminTasks', label: '任务', code: 'OPS' }
+  { key: 'adminHub', label: '系统概览', code: 'ADM' },
+  { key: 'adminUsers', label: '用户管理', code: 'USR' },
+  { key: 'adminContent', label: '内容审核', code: 'CNT' },
+  { key: 'adminTasks', label: '任务监管', code: 'OPS' }
 ]
 
 const questions = ref([])
@@ -615,6 +615,15 @@ function templatesForStrategy(strategyType) {
   return templates.value.filter((template) => template.strategy_type === strategyType)
 }
 
+function sourceLabel(source) {
+  const labels = {
+    manual: '手动录入',
+    llm_generated: '系统生成',
+    imported: '已导入'
+  }
+  return labels[source] || source
+}
+
 function percent(value, total) {
   if (!total) return '0%'
   return `${Math.round((value / total) * 100)}%`
@@ -646,17 +655,17 @@ const userProfiles = computed(() => adminUsers.value.map((item) => ({
   tasks: tasks.value.filter((task) => task.user_id === item.id).length
 })))
 const workflowCards = computed(() => [
-  { key: 'generate', step: '01', title: '生成题目', text: '配置模态类型和逻辑系统，生成可编辑草稿。', metric: `${draftQuestions.value.length} 个草稿`, cta: '进入生成台' },
-  { key: 'questions', step: '02', title: '确认题库', text: '审核题干、前提、答案和解析，沉淀 confirmed 样本。', metric: `${confirmedQuestions.value.length}/${questions.value.length} 已确认`, cta: '整理题库' },
-  { key: 'datasets', step: '03', title: '构建数据集', text: '从确认题库中组装评测集合，并导出标准 JSON。', metric: `${datasets.value.length} 个数据集`, cta: '查看数据集' },
-  { key: 'evaluate', step: '04', title: '运行评测', text: '组合模型和 Prompt 策略，批量记录模型输出。', metric: `${runningTasks.value} 个运行中`, cta: '编排任务' },
-  { key: 'reports', step: '05', title: '分析报告', text: '查看准确率矩阵、分类表现和单题输出明细。', metric: `${completedTasks.value} 份完成`, cta: '查看报告' }
+  { key: 'generate', step: '01', title: '题目生成', text: '配置模态类型、逻辑系统、难度和题目格式，生成待确认题目。', metric: `${draftQuestions.value.length} 个草稿`, cta: '进入题目生成' },
+  { key: 'questions', step: '02', title: '题目确认', text: '检查题干、前提、答案和解析，确认后进入正式题库。', metric: `${confirmedQuestions.value.length}/${questions.value.length} 已确认`, cta: '查看题库' },
+  { key: 'datasets', step: '03', title: '数据集构建', text: '从已确认题目中选择样本，形成可导出的评测数据集。', metric: `${datasets.value.length} 个数据集`, cta: '构建数据集' },
+  { key: 'evaluate', step: '04', title: '模型评测', text: '配置模型、接口和提示模板，对数据集执行批量评测。', metric: `${runningTasks.value} 个运行中`, cta: '发起评测' },
+  { key: 'reports', step: '05', title: '报告导出', text: '查看准确率、分类统计和单题输出，并导出 JSON/CSV。', metric: `${completedTasks.value} 份完成`, cta: '查看统计报告' }
 ])
 const adminCards = computed(() => [
-  { key: 'adminUsers', title: '用户与权限', value: adminUsers.value.length, hint: '注册账号 / 管理身份' },
-  { key: 'adminContent', title: '内容监管', value: questions.value.length, hint: `${draftQuestions.value.length} 个草稿待确认` },
-  { key: 'adminContent', title: '数据集资产', value: datasets.value.length, hint: '全量数据集与题目关联' },
-  { key: 'adminTasks', title: '评测运维', value: tasks.value.length, hint: `${failedTasks.value} 个失败任务` }
+  { key: 'adminUsers', title: '用户管理', value: adminUsers.value.length, hint: '注册账号 / 管理员身份' },
+  { key: 'adminContent', title: '内容审核', value: questions.value.length, hint: `${draftQuestions.value.length} 个草稿待确认` },
+  { key: 'adminContent', title: '数据集监管', value: datasets.value.length, hint: '全量数据集与题目关联' },
+  { key: 'adminTasks', title: '任务监管', value: tasks.value.length, hint: `${failedTasks.value} 个失败任务` }
 ])
 
 onMounted(() => {
@@ -676,13 +685,13 @@ onMounted(() => {
   <main v-if="!user" class="auth-shell">
     <section class="auth-hero">
       <div class="hero-copy">
-        <p class="eyebrow">MODAL LOGIC LAB · V1.0</p>
-        <h1>面向大语言模型的模态逻辑推理评测工作台</h1>
-        <p class="hero-text">把题目生成、数据集构建、Prompt 策略和模型评测串成一条可演示、可追踪、可导出的科研流程。</p>
+        <p class="eyebrow">V1.0 · 软件著作权演示系统</p>
+        <h1>模态逻辑推理数据集构建与评测系统</h1>
+        <p class="hero-text">系统支持题目生成、题库管理、数据集构建、模型评测、统计报告和结果导出，便于完成完整流程演示。</p>
         <div class="hero-metrics">
-          <div><span>Modal Types</span><strong>4</strong></div>
-          <div><span>Logic Systems</span><strong>K/T/S4/S5</strong></div>
-          <div><span>Report Groups</span><strong>7</strong></div>
+          <div><span>模态类型</span><strong>4</strong></div>
+          <div><span>逻辑系统</span><strong>K/T/S4/S5</strong></div>
+          <div><span>统计维度</span><strong>7</strong></div>
         </div>
         <div class="signal-strip">
           <i></i><i></i><i></i><i></i>
@@ -694,8 +703,8 @@ onMounted(() => {
     </section>
 
     <section class="auth-panel">
-      <div class="panel-kicker">Secure Workspace</div>
-      <h2>{{ authMode === 'login' ? '进入评测工作台' : '创建研究账号' }}</h2>
+      <div class="panel-kicker">系统登录</div>
+      <h2>{{ authMode === 'login' ? '进入评测系统' : '创建用户账号' }}</h2>
       <div class="segmented">
         <button :class="{ active: authMode === 'login' }" @click="authMode = 'login'">登录</button>
         <button :class="{ active: authMode === 'register' }" @click="authMode = 'register'">注册</button>
@@ -719,8 +728,8 @@ onMounted(() => {
       <div class="brand">
         <span class="brand-mark">ML</span>
         <div>
-          <strong>ModalLogic Lab</strong>
-          <span>{{ isAdminMode ? '系统管理舱' : '科研评测工作台' }}</span>
+          <strong>模态逻辑评测系统</strong>
+          <span>{{ isAdminMode ? '系统管理' : '题库构建与评测' }}</span>
         </div>
       </div>
       <nav>
@@ -778,18 +787,18 @@ onMounted(() => {
       <section v-if="page === 'hub'" class="page hub-canvas">
         <div class="hub-hero">
           <div>
-            <p class="section-tag">Research Flow</p>
-            <h2>从一道模态逻辑题，到一份模型评测报告</h2>
-            <p>点击流程节点直接进入对应模块。系统会把题目状态、数据集资产和评测结果持续汇总到这里。</p>
+            <p class="section-tag">系统流程</p>
+            <h2>从题目生成到报告导出的完整评测流程</h2>
+            <p>点击下方步骤进入对应模块。系统会汇总题目状态、数据集数量、评测进度和报告完成情况。</p>
             <div class="hero-actions">
               <button class="primary" type="button" @click="createDemoFlow" :disabled="isBusy('demoFlow')">
                 <span v-if="isBusy('demoFlow')" class="spinner"></span>
                 {{ isBusy('demoFlow') ? '正在生成演示数据' : '一键准备演示数据' }}
               </button>
-              <button type="button" @click="goTo('generate')">从参数配置开始</button>
+              <button type="button" @click="goTo('generate')">进入题目生成</button>
             </div>
           </div>
-          <img :src="logicNetwork" alt="模态逻辑实验流程" />
+          <img :src="logicNetwork" alt="模态逻辑系统流程" />
         </div>
         <div class="workflow-map">
           <button v-for="card in workflowCards" :key="card.key" class="module-card" @click="goTo(card.key)">
@@ -802,8 +811,8 @@ onMounted(() => {
         </div>
         <div class="hub-grid">
           <article class="insight-panel">
-            <p class="section-tag">Asset Snapshot</p>
-            <h3>题库资产状态</h3>
+            <p class="section-tag">题库概览</p>
+            <h3>题库状态统计</h3>
             <div class="mini-bars">
               <div><span>已确认</span><i :style="{ width: confirmedRate }"></i><b>{{ confirmedQuestions.length }}</b></div>
               <div><span>草稿</span><i :style="{ width: percent(draftQuestions.length, questions.length) }"></i><b>{{ draftQuestions.length }}</b></div>
@@ -811,11 +820,11 @@ onMounted(() => {
             </div>
           </article>
           <article class="insight-panel image-slot">
-            <img :src="emptyLab" alt="实验资产占位" />
+            <img :src="emptyState" alt="系统说明图" />
             <div>
-              <p class="section-tag">Image Slot</p>
-              <h3>这里预留后续截图/插图位</h3>
-              <span>可替换为系统流程图、软著截图或论文展示图。</span>
+              <p class="section-tag">材料预留</p>
+              <h3>系统说明图与截图位置</h3>
+              <span>后续可替换为系统流程图、软著截图或操作说明图，不影响页面布局。</span>
             </div>
           </article>
         </div>
@@ -824,21 +833,21 @@ onMounted(() => {
       <section v-if="page === 'generate'" class="page">
         <header class="page-head">
           <div>
-            <p class="section-tag">Experiment Composer</p>
+            <p class="section-tag">题目生成</p>
             <h2>题目生成</h2>
           </div>
           <button @click="loadQuestions">刷新题库</button>
         </header>
         <div class="experiment-hero">
           <div>
-            <span>Pipeline</span>
-            <strong>参数设定 → LLM 草稿 → 人工确认 → 题库沉淀</strong>
+            <span>生成流程</span>
+            <strong>参数设置 → 生成草稿 → 人工确认 → 进入题库</strong>
           </div>
           <div class="pipeline">
             <i class="active">01</i><i>02</i><i>03</i><i>04</i>
           </div>
         </div>
-        <form class="grid-form lab-panel" @submit.prevent="generateQuestions">
+        <form class="grid-form form-panel" @submit.prevent="generateQuestions">
           <label>模态类型<select v-model="generationForm.modal_type"><option v-for="item in modalTypes" :key="item">{{ item }}</option></select></label>
           <label>逻辑系统<select v-model="generationForm.logic_system"><option v-for="item in logicSystems" :key="item">{{ item }}</option></select></label>
           <label>难度<select v-model="generationForm.difficulty"><option v-for="item in difficulties" :key="item.value" :value="item.value">{{ item.label }}</option></select></label>
@@ -856,7 +865,7 @@ onMounted(() => {
       </section>
 
       <section v-if="page === 'questions'" class="page">
-        <header class="page-head"><div><p class="section-tag">Question Asset Bank</p><h2>题目管理</h2></div><button @click="loadQuestions">刷新</button></header>
+        <header class="page-head"><div><p class="section-tag">题库管理</p><h2>题库管理</h2></div><button @click="loadQuestions">刷新</button></header>
         <div class="filters command-bar">
           <select v-model="filters.modal_type"><option value="">全部模态</option><option v-for="item in modalTypes" :key="item">{{ item }}</option></select>
           <select v-model="filters.logic_system"><option value="">全部系统</option><option v-for="item in logicSystems" :key="item">{{ item }}</option></select>
@@ -865,7 +874,7 @@ onMounted(() => {
           <select v-model="filters.source"><option value="">全部来源</option><option value="manual">手动</option><option value="llm_generated">LLM生成</option><option value="imported">导入</option></select>
           <button @click="loadQuestions">筛选</button>
         </div>
-        <form class="editor lab-panel" @submit.prevent="saveQuestion">
+        <form class="editor form-panel" @submit.prevent="saveQuestion">
           <h3>{{ editingQuestionId ? '编辑题目' : '手动录入题目' }}</h3>
           <div class="grid-form">
             <label>标题<input v-model="questionForm.title" required /><small v-if="fieldErrors.question_title" class="field-error">{{ fieldErrors.question_title }}</small></label>
@@ -887,7 +896,7 @@ onMounted(() => {
           </button>
           <button type="button" @click="questionForm = blankQuestion(); editingQuestionId = null">清空</button>
         </form>
-        <div class="editor lab-panel">
+        <div class="editor form-panel">
           <h3>批量导入</h3>
           <div class="inline">
             <select v-model="importForm.format"><option value="json">JSON</option><option value="csv">CSV</option></select>
@@ -907,8 +916,8 @@ onMounted(() => {
                 <td>{{ item.title }}</td>
                 <td>{{ item.modal_type }} / {{ labelOf(difficulties, item.difficulty) }}</td>
                 <td>{{ item.logic_system }} · {{ item.modal_depth }}层</td>
-                <td><span class="pill" :class="item.review_status">{{ item.review_status === 'confirmed' ? '已确认' : '草稿' }}</span></td>
-                <td>{{ item.source }}</td>
+                <td><span class="pill stamp" :class="item.review_status">{{ item.review_status === 'confirmed' ? '已确认' : '草稿' }}</span></td>
+                <td><span class="pill source-stamp" :class="{ imported: item.source === 'imported' }">{{ sourceLabel(item.source) }}</span></td>
                 <td class="actions">
                   <button @click="editQuestion(item)">编辑</button>
                   <button v-if="item.review_status !== 'confirmed'" @click="confirmQuestion(item.id)" :disabled="isBusy(`confirm-${item.id}`)">
@@ -929,7 +938,7 @@ onMounted(() => {
       </section>
 
       <section v-if="page === 'datasets'" class="page">
-        <header class="page-head"><div><p class="section-tag">Dataset Profile</p><h2>数据集管理</h2></div><button @click="loadDatasets">刷新</button></header>
+        <header class="page-head"><div><p class="section-tag">数据集管理</p><h2>数据集管理</h2></div><button @click="loadDatasets">刷新</button></header>
         <form class="inline command-bar" @submit.prevent="createDataset">
           <span class="input-wrap"><input v-model="datasetForm.name" placeholder="数据集名称" required /><small v-if="fieldErrors.dataset_name" class="field-error">{{ fieldErrors.dataset_name }}</small></span>
           <input v-model="datasetForm.description" placeholder="描述" />
@@ -948,6 +957,7 @@ onMounted(() => {
             <div class="page-head">
               <h3>{{ selectedDataset.name }}</h3>
               <div class="actions">
+                <span class="export-badge">可导出 JSON</span>
                 <button @click="download(`/datasets/${selectedDataset.id}/export`, `dataset-${selectedDataset.id}.json`)">导出JSON</button>
                 <button class="danger" @click="deleteDataset(selectedDataset.id)" :disabled="isBusy(`delete-dataset-${selectedDataset.id}`)">删除</button>
               </div>
@@ -982,26 +992,26 @@ onMounted(() => {
             </div>
           </div>
           <div v-else class="empty-state">
-            <img :src="emptyLab" alt="暂无数据集" />
+            <img :src="emptyState" alt="暂无数据集" />
             <strong>选择或创建一个数据集</strong>
-            <span>数据集画像会在这里展示题目分布、格式比例和可导出资产。</span>
+            <span>这里会展示题目分布、格式比例和 JSON 导出入口。</span>
             <button type="button" @click="createDemoFlow" :disabled="isBusy('demoFlow')">一键准备演示数据</button>
           </div>
         </div>
       </section>
 
       <section v-if="page === 'evaluate'" class="page">
-        <header class="page-head"><div><p class="section-tag">Evaluation Orchestration</p><h2>评测中心</h2></div><button @click="loadTasks">刷新任务</button></header>
+        <header class="page-head"><div><p class="section-tag">模型评测</p><h2>模型评测</h2></div><button @click="loadTasks">刷新任务</button></header>
         <div class="experiment-hero amber">
           <div>
-            <span>Runbook</span>
-            <strong>数据集 → 模型组 → Prompt 策略 → 批量评测报告</strong>
+            <span>评测流程</span>
+            <strong>选择数据集 → 配置模型 → 选择提示模板 → 生成统计报告</strong>
           </div>
           <div class="pipeline">
-            <i class="active">DATA</i><i>MODEL</i><i>PROMPT</i><i>REPORT</i>
+            <i class="active">数据</i><i>模型</i><i>模板</i><i>报告</i>
           </div>
         </div>
-        <form class="editor lab-panel" @submit.prevent="createEvalTask">
+        <form class="editor form-panel" @submit.prevent="createEvalTask">
           <div class="grid-form">
             <label>数据集<select v-model.number="evalForm.dataset_id" required><option value="">请选择</option><option v-for="dataset in datasets" :key="dataset.id" :value="dataset.id">{{ dataset.name }}</option></select><small v-if="fieldErrors.eval_dataset" class="field-error">{{ fieldErrors.eval_dataset }}</small></label>
             <label>任务名称<input v-model="evalForm.task_name" required /><small v-if="fieldErrors.eval_name" class="field-error">{{ fieldErrors.eval_name }}</small></label>
@@ -1027,7 +1037,7 @@ onMounted(() => {
       </section>
 
       <section v-if="page === 'reports'" class="page">
-        <header class="page-head"><div><p class="section-tag">Result Matrix</p><h2>历史报告</h2></div><button @click="loadTasks">刷新</button></header>
+        <header class="page-head"><div><p class="section-tag">统计报告</p><h2>统计报告</h2></div><button @click="loadTasks">刷新</button></header>
         <div class="split">
           <div class="list-panel">
             <button v-for="task in tasks" :key="task.id" class="list-item" :class="{ active: selectedTask?.id === task.id }" @click="openTask(task.id)">
@@ -1044,17 +1054,20 @@ onMounted(() => {
               </div>
             </div>
             <div class="progress"><i :style="{ width: percent(selectedTask.finished_questions, selectedTask.total_questions) }"></i></div>
+            <h4 class="subsection-title">准确率统计</h4>
             <div class="metrics">
               <div><span>状态</span><strong>{{ selectedTask.status }}</strong></div>
               <div><span>总体准确率</span><strong>{{ reportOverall ? Math.round(reportOverall.accuracy * 100) + '%' : '待生成' }}</strong></div>
               <div><span>失败数量</span><strong>{{ selectedTask.predictions.filter(p => p.status === 'failed').length }}</strong></div>
             </div>
+            <h4 class="subsection-title">分类统计</h4>
             <div class="charts">
               <div v-for="report in selectedTask.reports.filter(r => r.group_type !== 'overall')" :key="report.id" class="chart">
                 <h4>{{ report.group_type }} · {{ report.group_name }}</h4>
                 <div class="bar-row"><span>准确率</span><i :style="{ width: `${Math.round(report.accuracy * 100)}%` }"></i><b>{{ Math.round(report.accuracy * 100) }}%</b></div>
               </div>
             </div>
+            <h4 class="subsection-title">原始输出</h4>
             <div class="table-wrap">
               <table>
                 <thead><tr><th>题目ID</th><th>模型</th><th>策略</th><th>解析/标准</th><th>状态</th><th>原始输出</th></tr></thead>
@@ -1072,17 +1085,17 @@ onMounted(() => {
             </div>
           </div>
           <div v-else class="empty-state report-empty">
-            <img :src="reportMatrix" alt="暂无评测报告" />
+            <img :src="reportGraphic" alt="暂无评测报告" />
             <strong>选择一个历史评测任务</strong>
-            <span>模型横向对比、策略对比和单题输出会在这里形成报告矩阵。</span>
+            <span>模型对比、策略对比和单题输出会在这里形成统计报告。</span>
             <button type="button" @click="goTo('evaluate')">去创建评测任务</button>
           </div>
         </div>
       </section>
 
       <section v-if="page === 'templates'" class="page">
-        <header class="page-head"><div><p class="section-tag">Prompt Library</p><h2>模板管理</h2></div><button @click="loadTemplates">刷新</button></header>
-        <form class="editor lab-panel" @submit.prevent="createTemplate">
+        <header class="page-head"><div><p class="section-tag">提示模板</p><h2>提示模板</h2></div><button @click="loadTemplates">刷新</button></header>
+        <form class="editor form-panel" @submit.prevent="createTemplate">
           <div class="grid-form">
             <label>名称<input v-model="templateForm.name" required /><small v-if="fieldErrors.template_name" class="field-error">{{ fieldErrors.template_name }}</small></label>
             <label>策略<select v-model="templateForm.strategy_type"><option v-for="item in strategies" :key="item.value" :value="item.value">{{ item.label }}</option></select></label>
@@ -1104,15 +1117,15 @@ onMounted(() => {
       </section>
 
       <section v-if="page === 'adminHub'" class="page admin-console">
-        <header class="page-head"><div><p class="section-tag">System Control</p><h2>管理舱总览</h2></div><button @click="loadAdmin">刷新管理数据</button></header>
+        <header class="page-head"><div><p class="section-tag">系统管理</p><h2>系统管理后台</h2></div><button @click="loadAdmin">刷新管理数据</button></header>
         <div class="admin-hero">
           <div>
             <span class="status-dot" :class="systemHealth"></span>
-            <p class="section-tag">API Health</p>
+            <p class="section-tag">接口状态</p>
             <h2>{{ systemHealth === 'healthy' ? '系统接口运行正常' : '接口状态检查中' }}</h2>
-            <p>管理员视角聚焦监管与运维，不混用普通研究用户的生成、构建、评测流程。</p>
+            <p>管理员可集中查看用户、题目、数据集、评测任务和异常情况。</p>
           </div>
-          <img :src="reportMatrix" alt="管理舱矩阵" />
+          <img :src="reportGraphic" alt="系统管理概览图" />
         </div>
         <div class="admin-grid">
           <button v-for="card in adminCards" :key="card.title" class="module-card admin-card" @click="goTo(card.key)">
@@ -1150,7 +1163,7 @@ onMounted(() => {
       </section>
 
       <section v-if="page === 'adminUsers'" class="page admin-console">
-        <header class="page-head"><div><p class="section-tag">Identity Control</p><h2>用户与权限</h2></div><button @click="loadAdmin">刷新用户</button></header>
+        <header class="page-head"><div><p class="section-tag">用户管理</p><h2>用户管理</h2></div><button @click="loadAdmin">刷新用户</button></header>
         <div class="profile-grid">
           <article v-for="item in userProfiles" :key="`profile-${item.id}`" class="profile-card">
             <div>
@@ -1183,7 +1196,7 @@ onMounted(() => {
       </section>
 
       <section v-if="page === 'adminContent'" class="page admin-console">
-        <header class="page-head"><div><p class="section-tag">Content Review</p><h2>内容监管</h2></div><button @click="loadDashboard">刷新内容</button></header>
+        <header class="page-head"><div><p class="section-tag">内容审核</p><h2>内容审核</h2></div><button @click="loadDashboard">刷新内容</button></header>
         <div class="metrics">
           <div><span>题目总数</span><strong>{{ questions.length }}</strong></div>
           <div><span>待确认草稿</span><strong>{{ draftQuestions.length }}</strong></div>
@@ -1210,8 +1223,8 @@ onMounted(() => {
                 <td>{{ item.title }}</td>
                 <td>#{{ item.user_id }}</td>
                 <td>{{ item.modal_type }} / {{ item.logic_system }} / {{ labelOf(difficulties, item.difficulty) }}</td>
-                <td><span class="pill" :class="item.review_status">{{ item.review_status === 'confirmed' ? '已确认' : '草稿' }}</span></td>
-                <td>{{ item.source }}</td>
+                <td><span class="pill stamp" :class="item.review_status">{{ item.review_status === 'confirmed' ? '已确认' : '草稿' }}</span></td>
+                <td><span class="pill source-stamp" :class="{ imported: item.source === 'imported' }">{{ sourceLabel(item.source) }}</span></td>
                 <td class="actions">
                   <button v-if="item.review_status !== 'confirmed'" @click="confirmQuestion(item.id)">确认</button>
                   <button class="danger" @click="deleteQuestion(item.id)">删除</button>
@@ -1237,7 +1250,7 @@ onMounted(() => {
       </section>
 
       <section v-if="page === 'adminTasks'" class="page admin-console">
-        <header class="page-head"><div><p class="section-tag">Evaluation Ops</p><h2>评测任务运维</h2></div><button @click="loadTasks">刷新任务</button></header>
+        <header class="page-head"><div><p class="section-tag">评测任务监管</p><h2>评测任务监管</h2></div><button @click="loadTasks">刷新任务</button></header>
         <div class="metrics">
           <div><span>任务总数</span><strong>{{ tasks.length }}</strong></div>
           <div><span>运行中</span><strong>{{ runningTasks }}</strong></div>

@@ -596,7 +596,7 @@ button:disabled {
 .list-panel,
 .template-grid article,
 .table-wrap,
-.lab-panel,
+.form-panel,
 .empty-state,
 .insight-panel,
 .admin-hero {
@@ -651,13 +651,26 @@ button:disabled {
 }
 
 .workflow-map {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(5, minmax(170px, 1fr));
   gap: 14px;
 }
 
+.workflow-map::before {
+  content: "";
+  position: absolute;
+  top: 35px;
+  left: 24px;
+  right: 24px;
+  height: 2px;
+  background: linear-gradient(90deg, var(--cyan), var(--blue), var(--amber));
+  opacity: .42;
+}
+
 .module-card {
   position: relative;
+  z-index: 1;
   min-height: 220px;
   display: grid;
   align-content: start;
@@ -667,7 +680,7 @@ button:disabled {
   border-radius: 20px;
   background:
     linear-gradient(180deg, var(--panel-strong), color-mix(in srgb, var(--panel) 84%, transparent)),
-    radial-gradient(circle at right bottom, color-mix(in srgb, var(--cyan) 14%, transparent), transparent 55%);
+    linear-gradient(135deg, color-mix(in srgb, var(--cyan) 8%, transparent), transparent 48%);
   overflow: hidden;
 }
 
@@ -678,8 +691,10 @@ button:disabled {
   bottom: -42px;
   width: 110px;
   height: 110px;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--cyan) 12%, transparent);
+  border-radius: 18px;
+  border: 1px solid color-mix(in srgb, var(--cyan) 22%, transparent);
+  background: color-mix(in srgb, var(--cyan) 8%, transparent);
+  transform: rotate(12deg);
 }
 
 .module-card .step {
@@ -858,7 +873,7 @@ button:disabled {
 .detail-panel,
 .list-panel,
 .template-grid article,
-.lab-panel {
+.form-panel {
   padding: 16px;
 }
 
@@ -914,6 +929,38 @@ button:disabled {
   border-color: color-mix(in srgb, var(--cyan) 30%, transparent);
 }
 
+.stamp {
+  border-radius: 6px;
+  border-style: dashed;
+  font-weight: 900;
+  letter-spacing: .02em;
+}
+
+.source-stamp {
+  background: color-mix(in srgb, var(--blue) 9%, var(--panel));
+  color: var(--blue);
+  border-color: color-mix(in srgb, var(--blue) 28%, transparent);
+}
+
+.source-stamp.imported {
+  background: color-mix(in srgb, var(--violet) 10%, var(--panel));
+  color: var(--violet);
+  border-color: color-mix(in srgb, var(--violet) 28%, transparent);
+}
+
+.export-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid color-mix(in srgb, var(--cyan) 30%, transparent);
+  border-radius: 999px;
+  color: var(--cyan);
+  background: var(--cyan-soft);
+  font-size: 12px;
+  font-weight: 900;
+}
+
 .split {
   display: grid;
   grid-template-columns: 300px minmax(0, 1fr);
@@ -941,6 +988,14 @@ button:disabled {
 .admin-console {
   display: grid;
   gap: 16px;
+}
+
+.subsection-title {
+  margin: 4px 0 -4px;
+  padding-left: 10px;
+  border-left: 4px solid var(--cyan);
+  color: var(--text);
+  font-size: 15px;
 }
 
 .metrics {
@@ -1257,6 +1312,10 @@ button:disabled {
   .profile-grid,
   .image-slot {
     grid-template-columns: 1fr;
+  }
+
+  .workflow-map::before {
+    display: none;
   }
 
   .experiment-hero,
